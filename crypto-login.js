@@ -1,68 +1,92 @@
 //
 const crypto = require("crypto");
-const db = require("./crypto-login-database")().start();
 
 
 
 
 
-//
-var settings = {
-	salt_length: 64,
-	pbkdf2_iterations: 20000,
-	hash_length: 64
+//object definition
+const cl = new CryptoLogin();
+function CryptoLogin() {
+	this.db = require("./crypto-login-database")();
+	this.settings = {
+		"iteration count": 20000,
+		"hash length": 64
+	}
+}
+
+CryptoLogin.prototype.start = function() {
+	this.db.start();
+	return this;
+};
+
+CryptoLogin.prototype.set = function (prop, val) {
+	//todo: implement
+	return this;
 };
 
 
 
 
 
+/*===========
+User management functions
+============*/
+CryptoLogin.prototype.addUser = function (user, pass, cb) {
+	hash(this, null, pass, (err, salt, pass_hash) => {
+		if (err) { cb(err); return; }
+		this.db.insertUser(user, pass_hash, salt, this.settings["iteration count"], err => {
+			cb(err);
+		});
+	});
+}
+
+CryptoLogin.prototype.authenticate = function (user, pass, cb) {
+	this.db.selectUser(user, (err, row) => {
+		if (err) { cb(err); return; }
+		else if (!row) { cb(null, false); return; }
+		hash(this, row[this.db.column_names.salt], pass, (err, salt, pass_hash) => {
+			if (err) { cb(err); return; }
+			cb(err, pass_hash == row[this.db.column_names.password_hash]);
+		});
+	});
+}
+
+CryptoLogin.prototype.removeUser = function (user, cb) {
+	this.db.deleteUser(user, (err) => {
+		cb(err);
+	});
+}
+
+/*===========
+The all-important hash function
+============*/
 //hashes a message using pbkdf2 algorithm
 //callback has three parameters: err:error, salt:string, msg_hash:string
-function hash(salt, msg, cb) {
+function hash(obj, salt, msg, cb) { //todo: cleaner implementation
 	if (salt == null) {
-		crypto.randomBytes(settings.salt_length, (err, salt) => {
+		crypto.randomBytes(obj.settings["hash length"], (err, salt) => {
 			if (err) { cb(err); return; }
-			crypto.pbkdf2(msg, salt, settings.pbkdf2_iterations, settings.hash_length, "sha256", (err, msg_hash) => {
+			crypto.pbkdf2(msg, salt, obj.settings["iteration count"], obj.settings["hash length"], "sha256", (err, msg_hash) => {
 				if (err) { cb(err); return; }
 				cb(null, salt.toString("hex"), msg_hash.toString("hex"));
 			});
 		});
 	} else {
-		crypto.pbkdf2(msg, Buffer.from(salt, "hex"), settings.pbkdf2_iterations, settings.hash_length, "sha256", (err, msg_hash) => {
+		crypto.pbkdf2(msg, Buffer.from(salt, "hex"), obj.settings["iteration count"], obj.settings["hash length"], "sha256", (err, msg_hash) => {
 			if (err) { cb(err); return; }
 			cb(null, salt.toString("hex"), msg_hash.toString("hex"));
 		});
 	}
 }
 
-function addUser(user, pass, cb) {
-	hash(null, pass, (err, salt, pass_hash) => {
-		if (err) { cb(err); return; }
-		db.insertUser(user, pass_hash, salt, settings.pbkdf2_iterations, err => {
-			cb(err);
-		});
-	});
+
+
+
+
+/*==========
+Module exports
+==========*/
+module.exports = function() {
+	return new CryptoLogin();
 }
-
-
-function authenticate(user, pass, cb) {
-	db.selectUser(user, (err, row) => {
-		if (err) { cb(err); return; }
-		else if (!row) { cb(null, false); return; }
-		hash(row["salt"], pass, (err, salt, pass_hash) => {
-			if (err) { cb(err); return; }
-			cb(err, pass_hash == row["passwordHash"]);
-		});
-	});
-}
-
-function removeUser(user, cb) {
-	db.deleteUser(user, (err) => {
-		cb(err);
-	});
-}
-
-exports.addUser = addUser;
-exports.authenticate = authenticate;
-exports.removeUser = removeUser;
