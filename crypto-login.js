@@ -43,9 +43,7 @@ User management functions
 CryptoLogin.prototype.addUser = function (user, pass, cb) {
 	hash(this, null, pass, (err, salt, pass_hash) => {
 		if (err) { cb(err); return; }
-		this.db.insertUser(user, pass_hash, salt, this.settings["iteration count"], err => {
-			cb(err);
-		});
+		this.db.insertUser(user, pass_hash, salt, this.settings["iteration count"], cb);
 	});
 }
 
@@ -60,14 +58,15 @@ CryptoLogin.prototype.authenticate = function (user, pass, cb) {
 	});
 }
 
-CryptoLogin.prototype.changePassword = function (user, old_pass, new_pass, cb) {
-
+CryptoLogin.prototype.changePassword = function (user, new_pass, cb) {
+	hash(this, null, new_pass, (err, salt, pass_hash) => {
+		if (err) { cb(err); return; }
+		this.db.updatePassword(user, pass_hash, salt, this.settings["iteration count"], cb);
+	});
 }
 
 CryptoLogin.prototype.removeUser = function (user, cb) {
-	this.db.deleteUser(user, (err) => {
-		cb(err);
-	});
+	this.db.deleteUser(user, cb);
 }
 
 /*===========

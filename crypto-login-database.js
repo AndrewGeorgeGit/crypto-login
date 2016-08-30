@@ -39,6 +39,15 @@ CryptoLoginTable.prototype.insertUser = function (user, pass_hash, salt, iterati
 	this.db.run(`INSERT INTO ${this["table"]} VALUES( ? ,  ? ,  ? , ? )`, [user, pass_hash, salt, iterations], err => cb(err));
 };
 
+CryptoLoginTable.prototype.updatePassword = function (user, new_pass_hash, new_salt, new_iterations, cb) {
+	this.db.run(`UPDATE ${this["table"]} SET 
+		${this["password hash column"]}=?, 
+		${this["salt column"]}=?,
+		${this["iterations column"]}=? `,
+		[new_pass_hash, new_salt, new_iterations],
+		cb);
+};
+
 CryptoLoginTable.prototype.selectUser = function (user, cb) {
 	this.db.get(`SELECT * FROM ${this["table"]} WHERE ${this["username column"]}=?`, user, (err, row) => cb(err, row));
 };
