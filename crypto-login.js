@@ -75,21 +75,26 @@ The all-important hash function
 ============*/
 //hashes a message using pbkdf2 algorithm
 //callback has three parameters: err:error, salt:string, msg_hash:string
-function hash(obj, salt, msg, cb) { //todo: cleaner implementation
+function hash(obj, salt, msg, cb) {
+	//generating random salt if necessary
 	if (salt == null) {
 		crypto.randomBytes(obj.settings["hash length"], (err, salt) => {
 			if (err) { cb(err); return; }
-			crypto.pbkdf2(msg, salt, obj.settings["iteration count"], obj.settings["hash length"], "sha256", (err, msg_hash) => {
-				if (err) { cb(err); return; }
-				cb(null, salt.toString("hex"), msg_hash.toString("hex"));
-			});
+			hash(obj, salt.toString("hex"), msg, cb);
 		});
-	} else {
-		crypto.pbkdf2(msg, Buffer.from(salt, "hex"), obj.settings["iteration count"], obj.settings["hash length"], "sha256", (err, msg_hash) => {
-			if (err) { cb(err); return; }
-			cb(null, salt.toString("hex"), msg_hash.toString("hex"));
-		});
+		return;
 	}
+
+	//type checking
+	if (typeof salt == "string") {
+		salt = Buffer.from(salt, "hex");
+	}
+
+	//actually hashing
+	crypto.pbkdf2(msg, salt, obj.settings["iteration count"], obj.settings["hash length"], "sha256", (err, msg_hash) => {
+		if (err) { cb(err); return; }
+		cb(null, salt.toString("hex"), msg_hash.toString("hex"));
+	});
 }
 
 
