@@ -25,17 +25,11 @@ CryptoLogin.prototype.set = function (prop, val) {
 		if (!Number.isInteger(val)) return;
 		this.settings[prop] = val;
 	}
-
-	const db_properties = ["path", "table", "username column", "password hash column", "salt column", "iterations column"];
-	if (db_properties.indexOf(prop) != -1 && typeof val == "string") {
-		var trunc_prop = prop.replace(" column", "");
-		if (trunc_prop.length < prop.length) {
-			this.db.column_names[trunc_prop] = val;
-		}
-		else {
-			this.db[trunc_prop] = val;
-		}
+	else if (prop in this.db) {
+		if (typeof val !== "string") return;
+		this.db[prop] = val;
 	}
+
 	return this;
 };
 
@@ -59,11 +53,15 @@ CryptoLogin.prototype.authenticate = function (user, pass, cb) {
 	this.db.selectUser(user, (err, row) => {
 		if (err) { cb(err); return; }
 		else if (!row) { cb(null, false); return; }
-		hash(this, row[this.db.column_names.salt], pass, (err, salt, pass_hash) => {
+		hash(this, row[this.db["salt column"]], pass, (err, salt, pass_hash) => {
 			if (err) { cb(err); return; }
-			cb(err, pass_hash == row[this.db.column_names["password hash"]]);
+			cb(err, pass_hash == row[this.db["password hash column"]]);
 		});
 	});
+}
+
+CryptoLogin.prototype.changePassword = function (user, old_pass, new_pass, cb) {
+
 }
 
 CryptoLogin.prototype.removeUser = function (user, cb) {
