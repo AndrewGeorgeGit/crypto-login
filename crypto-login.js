@@ -21,7 +21,21 @@ CryptoLogin.prototype.start = function() {
 };
 
 CryptoLogin.prototype.set = function (prop, val) {
-	//todo: implement
+	if (prop in this.settings) {
+		if (!Number.isInteger(val)) return;
+		this.settings[prop] = val;
+	}
+
+	const db_properties = ["path", "table", "username column", "password hash column", "salt column", "iterations column"];
+	if (db_properties.indexOf(prop) != -1 && typeof val == "string") {
+		var trunc_prop = prop.replace(" column", "");
+		if (trunc_prop.length < prop.length) {
+			this.db.column_names[trunc_prop] = val;
+		}
+		else {
+			this.db[trunc_prop] = val;
+		}
+	}
 	return this;
 };
 
@@ -47,7 +61,7 @@ CryptoLogin.prototype.authenticate = function (user, pass, cb) {
 		else if (!row) { cb(null, false); return; }
 		hash(this, row[this.db.column_names.salt], pass, (err, salt, pass_hash) => {
 			if (err) { cb(err); return; }
-			cb(err, pass_hash == row[this.db.column_names.password_hash]);
+			cb(err, pass_hash == row[this.db.column_names["password hash"]]);
 		});
 	});
 }
