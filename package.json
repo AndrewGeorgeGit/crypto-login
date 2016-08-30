@@ -1,0 +1,29 @@
+{
+  "name": "crypto-login",
+  "version": "0.0.0",
+  "description": "User authentication management system which stores cryptographically secure password hashes.",
+  "main": "crypto-login.js",
+  "scripts": {
+    "test": "test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndrewGeorgeGit/crypto-login.git"
+  },
+  "keywords": [
+    "user",
+    "authentication",
+    "login",
+    "management",
+    "cryptography"
+  ],
+  "author": "Andrew George",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/AndrewGeorgeGit/crypto-login/issues"
+  },
+  "homepage": "https://github.com/AndrewGeorgeGit/crypto-login#readme",
+  "dependencies": {
+    "sqlite3": "^3.1.4"
+  }
+}
