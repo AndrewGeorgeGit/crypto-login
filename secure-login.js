@@ -7,7 +7,7 @@ const crypto = require("crypto");
 
 //object definition
 function SecureLogin() {
-	this.db = require("./secure-login-database")();
+	this.db = require("./secure-login-table")();
 	this.settings = {
 		"iteration count": 20000,
 		"hash length": 64

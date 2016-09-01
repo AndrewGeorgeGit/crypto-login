@@ -7,7 +7,7 @@ const sql = require("sqlite3").verbose();
 
 //definition of database 
 function SecureLoginTable() {
-	this["database instance"] = null;
+	this["db"] = null;
 	this["database path"] = "./crypto_login_files/database.db";
 	this["table"] = "users";
 	this["username column"] = "username";
@@ -37,6 +37,14 @@ User management
 ==========*/
 SecureLoginTable.prototype.insertUser = function (user, pass_hash, salt, iterations, cb) {
 	this.db.run(`INSERT INTO ${this["table"]} VALUES( ? ,  ? ,  ? , ? )`, [user, pass_hash, salt, iterations], err => cb(err));
+};
+
+SecureLoginTable.prototype.updateUsername = function (old_user, new_user, cb) {
+	this.db.run(`UPDATE ${this["table"]}
+		SET ${this["username column"]}=?
+		WHERE ${this["username column"]}=?`,
+		[new_user, old_user],
+		cb);
 };
 
 SecureLoginTable.prototype.updatePassword = function (user, new_pass_hash, new_salt, new_iterations, cb) {
