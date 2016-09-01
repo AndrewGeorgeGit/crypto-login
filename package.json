@@ -2,6 +2,10 @@
   "name": "secure-login",
   "version": "0.3.0",
   "description": "User authentication management system which stores cryptographically secure password hashes.",
+  "main": "secure-login.js",
+  "scripts": {
+    "start": "node ./test/app.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/AndrewGeorgeGit/secure-login.git"

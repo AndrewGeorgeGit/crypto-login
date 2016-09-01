@@ -7,7 +7,7 @@ const crypto = require("crypto");
 
 //object definition
 function SecureLogin() {
-	this.db = require("./crypto-login-database")();
+	this.db = require("./secure-login-database")();
 	this.settings = {
 		"iteration count": 20000,
 		"hash length": 64
@@ -55,6 +55,10 @@ SecureLogin.prototype.authenticate = function (user, pass, cb) {
 			cb(err, pass_hash == row[this.db["password hash column"]]);
 		});
 	});
+}
+
+SecureLogin.prototype.changeUsername = function (old_user, new_user, cb) {
+	this.db.updateUsername(old_user, new_user, cb);
 }
 
 SecureLogin.prototype.changePassword = function (user, new_pass, cb) {

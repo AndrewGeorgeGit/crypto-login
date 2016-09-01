@@ -2,3 +2,9 @@
 test/
 node_modules/
 *.db
+app.js
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
