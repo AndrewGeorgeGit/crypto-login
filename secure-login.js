@@ -6,8 +6,7 @@ const crypto = require("crypto");
 
 
 //object definition
-const cl = new CryptoLogin();
-function CryptoLogin() {
+function SecureLogin() {
 	this.db = require("./crypto-login-database")();
 	this.settings = {
 		"iteration count": 20000,
@@ -15,12 +14,12 @@ function CryptoLogin() {
 	}
 }
 
-CryptoLogin.prototype.start = function() {
+SecureLogin.prototype.start = function() {
 	this.db.start();
 	return this;
 };
 
-CryptoLogin.prototype.set = function (prop, val) {
+SecureLogin.prototype.set = function (prop, val) {
 	if (prop in this.settings) {
 		if (!Number.isInteger(val)) return;
 		this.settings[prop] = val;
@@ -40,14 +39,14 @@ CryptoLogin.prototype.set = function (prop, val) {
 /*===========
 User management functions
 ============*/
-CryptoLogin.prototype.addUser = function (user, pass, cb) {
+SecureLogin.prototype.addUser = function (user, pass, cb) {
 	hash(this, null, pass, (err, salt, pass_hash) => {
 		if (err) { cb(err); return; }
 		this.db.insertUser(user, pass_hash, salt, this.settings["iteration count"], cb);
 	});
 }
 
-CryptoLogin.prototype.authenticate = function (user, pass, cb) {
+SecureLogin.prototype.authenticate = function (user, pass, cb) {
 	this.db.selectUser(user, (err, row) => {
 		if (err) { cb(err); return; }
 		else if (!row) { cb(null, false); return; }
@@ -58,14 +57,14 @@ CryptoLogin.prototype.authenticate = function (user, pass, cb) {
 	});
 }
 
-CryptoLogin.prototype.changePassword = function (user, new_pass, cb) {
+SecureLogin.prototype.changePassword = function (user, new_pass, cb) {
 	hash(this, null, new_pass, (err, salt, pass_hash) => {
 		if (err) { cb(err); return; }
 		this.db.updatePassword(user, pass_hash, salt, this.settings["iteration count"], cb);
 	});
 }
 
-CryptoLogin.prototype.removeUser = function (user, cb) {
+SecureLogin.prototype.removeUser = function (user, cb) {
 	this.db.deleteUser(user, cb);
 }
 
@@ -104,5 +103,5 @@ function hash(obj, salt, msg, cb) {
 Module exports
 ==========*/
 module.exports = function() {
-	return new CryptoLogin();
+	return new SecureLogin();
 }
