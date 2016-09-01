@@ -6,7 +6,7 @@ const sql = require("sqlite3").verbose();
 
 
 //definition of database 
-function CryptoLoginTable() {
+function SecureLoginTable() {
 	this["database instance"] = null;
 	this["database path"] = "./crypto_login_files/database.db";
 	this["table"] = "users";
@@ -16,7 +16,7 @@ function CryptoLoginTable() {
 	this["iterations column"] = "iterations";
 };
 
-CryptoLoginTable.prototype.start = function() {
+SecureLoginTable.prototype.start = function() {
 	this.db = new sql.Database(this["database path"]);
 	this.db.run(`CREATE TABLE IF NOT EXISTS ${this["table"]} (` +
 		`${this["username column"]} TEXT PRIMARY KEY, ` +
@@ -35,11 +35,11 @@ CryptoLoginTable.prototype.start = function() {
 /*==========
 User management
 ==========*/
-CryptoLoginTable.prototype.insertUser = function (user, pass_hash, salt, iterations, cb) {
+SecureLoginTable.prototype.insertUser = function (user, pass_hash, salt, iterations, cb) {
 	this.db.run(`INSERT INTO ${this["table"]} VALUES( ? ,  ? ,  ? , ? )`, [user, pass_hash, salt, iterations], err => cb(err));
 };
 
-CryptoLoginTable.prototype.updatePassword = function (user, new_pass_hash, new_salt, new_iterations, cb) {
+SecureLoginTable.prototype.updatePassword = function (user, new_pass_hash, new_salt, new_iterations, cb) {
 	this.db.run(`UPDATE ${this["table"]} SET 
 		${this["password hash column"]}=?, 
 		${this["salt column"]}=?,
@@ -48,11 +48,11 @@ CryptoLoginTable.prototype.updatePassword = function (user, new_pass_hash, new_s
 		cb);
 };
 
-CryptoLoginTable.prototype.selectUser = function (user, cb) {
+SecureLoginTable.prototype.selectUser = function (user, cb) {
 	this.db.get(`SELECT * FROM ${this["table"]} WHERE ${this["username column"]}=?`, user, (err, row) => cb(err, row));
 };
 
-CryptoLoginTable.prototype.deleteUser = function (user, cb) {
+SecureLoginTable.prototype.deleteUser = function (user, cb) {
 	this.db.run(`DELETE FROM ${this["table"]} WHERE ${this["username column"]}=?`, user, err => cb(err));
 };
 
@@ -62,5 +62,5 @@ CryptoLoginTable.prototype.deleteUser = function (user, cb) {
 
 //exports
 module.exports = function() {
-	return new CryptoLoginTable;
+	return new SecureLoginTable;
 };
