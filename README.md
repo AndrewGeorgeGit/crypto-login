@@ -31,15 +31,17 @@ login.addUser("username", "password", err => {});
 //logg in a user. success is a boolean type
 login.authenticate("username", "password", (err, success) => {}); 
 
+//update username
+login.changeUsername("oldusername", "newusername", err => {});
+
 //update a user's password
-log.changePassword("username", "newpassword", err => {});
+login.changePassword("username", "newpassword", err => {});
 
 //remove a user
 login.removeUser("username", err => {});
 ```
 
 ## future plans
-- add ability to change username
 - add more set options, including ones to alter the hashing algorithm's strength
 - Passportjs integration
 - web server API interface with possible Express integration
