@@ -8,7 +8,7 @@ const sql = require("sqlite3").verbose();
 //definition of database 
 function SecureLoginTable() {
 	this["db"] = null;
-	this["database path"] = "./crypto_login_files/database.db";
+	this["database path"] = "./users.db";
 	this["table"] = "users";
 	this["username column"] = "username";
 	this["password hash column"] = "passwordHash";

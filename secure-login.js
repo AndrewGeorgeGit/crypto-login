@@ -7,6 +7,7 @@ const crypto = require("crypto");
 
 //object definition
 function SecureLogin() {
+	this.api = new require('./secure-login-api.js')(this);
 	this.db = require("./secure-login-table")();
 	this.settings = {
 		"iteration count": 20000,
