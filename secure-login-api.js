@@ -1,92 +1,75 @@
-function SecureLoginApi(sl) {
-	this.sl = sl;
-	this.callbacks = {
-		"add-user success": (req, res)=>{ res.end("add-user success"); },
-		"add-user failure": (req, res)=>{ res.end("add-user failure"); },
-		"remove-user success": (req, res)=>{ res.end("remove-user success"); },
-		"remove-user failure": (req, res)=>{ res.end("remove-user failure"); },
-		"change-username success": (req, res)=>{ res.end("change-username success"); },
-		"change-username failure": (req, res)=>{ res.end("change-username failure"); },
-		"change-password success": (req, res)=>{ res.end("change-password success"); },
-		"change-password failure": (req, res)=>{ res.end("change-password failure"); },
-		"authenticate success": (req, res)=>{ res.end("authenticate success"); },
-		"authenticate failure": (req, res)=>{ res.end("authenticate failure"); }
-	}
-}
+const assert = require('assert');
+const winston = require('winston');
 
-SecureLoginApi.prototype.on = function (prop, val) {
-	if (!(prop in this.callbacks) || typeof val !== "function") { return; }
-	this.callbacks[prop] = val;
-};
+class SecureLoginApi {
+	/* ---------- constructor ---------- */
+	constructor(endpoints, start_funcs) {
+		//asserting my own code, todo: check for uniqueness of endpoints
+		assert(endpoints.length === start_funcs.length);
+		assert(!endpoints.find(e => typeof e !== "string"));
+		assert(!start_funcs.find(e => e.length !== 1));
 
-SecureLoginApi.prototype.router = function (req, res, next = ()=>{}) {
-	//move on if API wasn't called
-	const url = require('path').parse(req.url);
-	if (url.dir !== "/secure-login") {
-		console.log("nope");
-		next();
-		return;
+		//endpoints and their related functions are stored here
+		this.callbacks = {};
+		for (let i = 0; i < endpoints.length; i++) {
+			this.callbacks[endpoints[i]] = {
+				"start": start_funcs[i],
+				"react": SecureLoginApi.createDefaultReactFunc(endpoints[i])
+			};
+		}
 	}
 
-
-
-
-	//
-	var queryString = "";
-	req.on('data', data => queryString += data);
-
-
-
-
-	//
-	req.on('end', function() {
-		var data = require("querystring").parse(queryString),
-		username = data.username,
-		password = data.password,
-		updated = data.update;
-
-		switch (url.base.toLowerCase()) {
-			case "add-user":
-				this.sl.addUser(username, password, err => {
-					this.callbacks["add-user " + (err ?	 "failure" : "success")](req, res)
-				});
-				break;
-			case "remove-user":
-				this.sl.removeUser(username, err => {
-					if (err) { this.callbacks["remove-user failure"](req, res); }
-					else { this.callbacks["remove-user success"](req, res); }
-					next();
-				});
-				break;
-			case "change-username":
-				this.sl.changeUsername(username, changed, err => {
-					if (err) { this.callbacks["change-username failure"](req, res); }
-					else { this.callbacks["change-username success"](req, res); }
-					next();
-				});
-				break;
-			case "change-password":
-				this.sl.changePassword(username, changed, err => {
-					if (err) { this.callbacks["change-password failure"](req, res); }
-					else { this.callbacks["change-password success"](req, res); }
-					next();
-				});
-				break;
-			case "authenticate":
-				this.sl.authenticate(username, password, (err, success) => {
-					if (success) { this.callbacks["authenticate success"](req, res); }
-					else { this.callbacks["authenticate failure"](req, res); }
-					next();
-				})
-				break;
-			default:
-				next();
-				return;
+	/* ---------- router ----------*/
+	router(req, res, next = ()=>{}) { //how is request going to work with express middleware?
+		//validating parameters passed
+		if (!req || !res) {
+			//todo: log
 		}
 
-	}.bind(this)); //todo: better understand this
-};
+		//
+		const url = require('path').parse(req.url);
+		if (url.dir !== "/secure-login") {
+			//next(req, res);
+			next();
+			return;
+		}
 
-module.exports = function(sl) {
-	return new SecureLoginApi(sl);
+		let body = "";
+		req.on('data', d => body += d)
+		   .on('end', function() {
+		   		let endpoint = this.callbacks[url.base];
+		   		endpoint.start(require('querystring').parse(body))
+		   			.then(result => endpoint.react(result, req, res))
+		   			.then(() => next(req, res))
+		   			.catch(err => { console.log(err); next(req, res); });
+			}.bind(this));
+	}
+
+	/* ---------- on ----------*/
+	on(endpoint, func) {
+		if (typeof func !== "function") {
+			winston.warn("sl.api.on: parameter passed is not a valid function");
+			return this;
+		}
+
+		if (endpoint in this.callbacks) {
+			this.callbacks[endpoint].react = func;
+		} else {
+			winston.warn("sl.api.on: endpoint '%s' does not exist.", endpoint);
+		}
+
+		return this;
+	}
+
+	/* ---------- default endpoint generataor ---------- */
+	static createDefaultReactFunc(endpoint) {
+		return function (result, req, res) {
+			return new Promise((resolve, reject) => {
+				res.end(endpoint + ": " + result);
+				resolve();
+			});
+		}
+	}
 }
+
+module.exports = SecureLoginApi;

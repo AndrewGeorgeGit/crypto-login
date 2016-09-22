@@ -1,5 +1,6 @@
 //
 const crypto = require("crypto");
+const SecureLoginApi = require('./secure-login-api.js');
 
 
 
@@ -17,7 +18,8 @@ function Credentials(username = null, password = null, newUsername = null, newPa
 
 //object definition
 function SecureLogin() {
-	this.api = new require('./secure-login-api.js')(this);
+	this.api = new SecureLoginApi(['add-user', 'remove-user', 'change-username', 'change-password', 'login'],
+		[this.addUser.bind(this), this.removeUser.bind(this), this.changeUsername.bind(this), this.changePassword.bind(this), this.authenticate.bind(this)]);
 	this.db = require("./secure-login-table")();
 	this.settings = {
 		"iteration count": 20000,
@@ -50,37 +52,60 @@ SecureLogin.prototype.set = function (prop, val) {
 /*===========
 User management functions
 ============*/
-SecureLogin.prototype.addUser = function (credentials, cb) {
-	hash(this, null, credentials.password, (err, salt, pass_hash) => {
-		if (err) { cb(err); return; }
-		this.db.insertUser(credentials.username, pass_hash, salt, this.settings["iteration count"], cb);
-	});
+SecureLogin.prototype.addUser = function (credentials) {
+	return new Promise(function (resolve, reject) {
+		hash(this, null, credentials.password, (err, salt, pass_hash) => {
+			if (err) reject(err);
+			this.db.insertUser(credentials.username, pass_hash, salt, this.settings["iteration count"], err => {
+				if (err && err.errno !== 19) reject(err);
+				else resolve(err ? false : true);
+			});
+		});	
+	}.bind(this));
 }
 
-SecureLogin.prototype.authenticate = function (credentials, cb) {
-	this.db.selectUser(credentials.username, (err, row) => {
-		if (err) { cb(err); return; }
-		else if (!row) { cb(null, false); return; }
-		hash(this, row[this.db["salt column"]], credentials.password, (err, salt, pass_hash) => {
-			if (err) { cb(err); return; }
-			cb(err, pass_hash == row[this.db["password hash column"]]);
+SecureLogin.prototype.authenticate = function (credentials) {
+	return new Promise(function (resolve, reject) {
+		this.db.selectUser(credentials.username, (err, row) => {
+			if (err) { reject(err); return; }
+			else if (!row) { resolve(false); return; }
+			hash(this, row[this.db["salt column"]], credentials.password, (err, salt, pass_hash) => {
+				if (err) { reject(this); return; }
+				resolve(pass_hash == row[this.db["password hash column"]]);
+			});
 		});
-	});
+	}.bind(this));
+		
 }
 
-SecureLogin.prototype.changeUsername = function (credentials, cb) {
-	this.db.updateUsername(credentials.username, credentials.new_username, cb);
+SecureLogin.prototype.changeUsername = function (credentials) {
+	return new Promise(function (resolve, reject) {
+		this.db.updateUsername(credentials.username, credentials.new_username, err => {
+			if (err && err.errno !== 19) { reject(err); return; }
+			else { resolve(err ? false : true); return; }
+		});
+	}.bind(this));
 }
 
-SecureLogin.prototype.changePassword = function (credentials, cb) {
-	hash(this, null, credentials.new_password, (err, salt, pass_hash) => {
-		if (err) { cb(err); return; }
-		this.db.updatePassword(credentials.username, pass_hash, salt, this.settings["iteration count"], cb);
-	});
+SecureLogin.prototype.changePassword = function (credentials) {
+	return new Promise(function (resolve, reject) {
+		hash(this, null, credentials.new_password, (err, salt, pass_hash) => {
+			if (err) { reject(err); return; }
+			this.db.updatePassword(credentials.username, pass_hash, salt, this.settings["iteration count"], err => {
+				if (err) { reject(err); return; }
+				resolve(true);
+			});
+		});
+	}.bind(this));
 }
 
-SecureLogin.prototype.removeUser = function (credentials, cb) {
-	this.db.deleteUser(credentials.username, cb);
+SecureLogin.prototype.removeUser = function (credentials) {
+	return new Promise(function (resolve, reject) {
+		this.db.deleteUser(credentials.username, err => {
+			if (err) { reject(err); return; }
+			resolve(true);
+		});
+	}.bind(this));
 }
 
 /*===========
