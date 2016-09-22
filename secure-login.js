@@ -5,6 +5,16 @@ const crypto = require("crypto");
 
 
 
+//
+function Credentials(username = null, password = null, newUsername = null, newPassword = null) {
+	return {
+		"username": username,
+		"password": password,
+		"newUsername": new_username,
+		"newPassword": new_password
+	}
+}
+
 //object definition
 function SecureLogin() {
 	this.api = new require('./secure-login-api.js')(this);
@@ -40,37 +50,37 @@ SecureLogin.prototype.set = function (prop, val) {
 /*===========
 User management functions
 ============*/
-SecureLogin.prototype.addUser = function (user, pass, cb) {
-	hash(this, null, pass, (err, salt, pass_hash) => {
+SecureLogin.prototype.addUser = function (credentials, cb) {
+	hash(this, null, credentials.password, (err, salt, pass_hash) => {
 		if (err) { cb(err); return; }
-		this.db.insertUser(user, pass_hash, salt, this.settings["iteration count"], cb);
+		this.db.insertUser(credentials.username, pass_hash, salt, this.settings["iteration count"], cb);
 	});
 }
 
-SecureLogin.prototype.authenticate = function (user, pass, cb) {
-	this.db.selectUser(user, (err, row) => {
+SecureLogin.prototype.authenticate = function (credentials, cb) {
+	this.db.selectUser(credentials.username, (err, row) => {
 		if (err) { cb(err); return; }
 		else if (!row) { cb(null, false); return; }
-		hash(this, row[this.db["salt column"]], pass, (err, salt, pass_hash) => {
+		hash(this, row[this.db["salt column"]], credentials.password, (err, salt, pass_hash) => {
 			if (err) { cb(err); return; }
 			cb(err, pass_hash == row[this.db["password hash column"]]);
 		});
 	});
 }
 
-SecureLogin.prototype.changeUsername = function (old_user, new_user, cb) {
-	this.db.updateUsername(old_user, new_user, cb);
+SecureLogin.prototype.changeUsername = function (credentials, cb) {
+	this.db.updateUsername(credentials.username, credentials.new_username, cb);
 }
 
-SecureLogin.prototype.changePassword = function (user, new_pass, cb) {
-	hash(this, null, new_pass, (err, salt, pass_hash) => {
+SecureLogin.prototype.changePassword = function (credentials, cb) {
+	hash(this, null, credentials.new_password, (err, salt, pass_hash) => {
 		if (err) { cb(err); return; }
-		this.db.updatePassword(user, pass_hash, salt, this.settings["iteration count"], cb);
+		this.db.updatePassword(credentials.username, pass_hash, salt, this.settings["iteration count"], cb);
 	});
 }
 
-SecureLogin.prototype.removeUser = function (user, cb) {
-	this.db.deleteUser(user, cb);
+SecureLogin.prototype.removeUser = function (credentials, cb) {
+	this.db.deleteUser(credentials.username, cb);
 }
 
 /*===========

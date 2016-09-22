@@ -3,6 +3,7 @@ test/
 node_modules/
 *.db
 app.js
+*sublime*
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
