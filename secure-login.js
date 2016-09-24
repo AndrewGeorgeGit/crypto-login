@@ -18,8 +18,13 @@ function Credentials(username = null, password = null, newUsername = null, newPa
 
 //object definition
 function SecureLogin() {
-	this.api = new SecureLoginApi(['add-user', 'remove-user', 'change-username', 'change-password', 'login'],
-		[this.addUser.bind(this), this.removeUser.bind(this), this.changeUsername.bind(this), this.changePassword.bind(this), this.authenticate.bind(this)]);
+	this.api = new SecureLoginApi({
+		'add-user': this.addUser.bind(this),
+		'remove-user': this.removeUser.bind(this),
+		'change-username': this.changeUsername.bind(this),
+		'change-password': this.changePassword.bind(this),
+		'login': this.authenticate.bind(this)
+	});
 	this.db = require("./secure-login-table")();
 	this.settings = {
 		"iteration count": 20000,

@@ -1,43 +1,46 @@
 const assert = require('assert');
-const winston = require('winston');
 
 class SecureLoginApi {
-	/* ---------- constructor ---------- */
-	constructor(endpoints, start_funcs) {
-		//asserting my own code, todo: check for uniqueness of endpoints
-		assert(endpoints.length === start_funcs.length);
-		assert(!endpoints.find(e => typeof e !== "string"));
-		assert(!start_funcs.find(e => e.length !== 1));
+	constructor(endpoints) { //regular expression validation of endpoints
+		this.endpoints = {};
+		for (let endpoint in endpoints) {
+			let epFunc = endpoints[endpoint];
 
-		//endpoints and their related functions are stored here
-		this.callbacks = {};
-		for (let i = 0; i < endpoints.length; i++) {
-			this.callbacks[endpoints[i]] = {
-				"start": start_funcs[i],
-				"react": SecureLoginApi.createDefaultReactFunc(endpoints[i])
-			};
+			//parameter validation
+			let err = null;
+			if (typeof epFunc !== 'function') err = new Error("sl.api.constructor: every endpoint must have associated start function");
+			else if (epFunc.length !== 1) err = new Error("sl.api.constructor: not every endpoint start function takes only 1 parameter");
+			if (err) { this.endpoints = {}; throw err; } //cleanup before throwing
+
+			//continuing object construction
+			this.endpoints[endpoint] = {
+				"start": epFunc,
+				"react": SecureLoginApi.createDefaultReactFunc(endpoint)
+			}
 		}
 	}
 
-	/* ---------- router ----------*/
-	router(req, res, next = ()=>{}) { //how is request going to work with express middleware?
-		//validating parameters passed
-		if (!req || !res) {
-			//todo: log
-		}
+	router(req, res, next) {
+		//parameter validation
+		if (!req || !res || typeof req !== "object" || typeof res !== "object") throw new Error("sl.api.router: req, res must be non-null objects");
+		if (typeof next !== "function") throw new TypeError("sl.api.router: next must be a function");
 
-		//
 		const url = require('path').parse(req.url);
 		if (url.dir !== "/secure-login") {
-			//next(req, res);
-			next();
+			next(req, res);
 			return;
 		}
 
 		let body = "";
 		req.on('data', d => body += d)
 		   .on('end', function() {
-		   		let endpoint = this.callbacks[url.base];
+		   		let endpoint = this.endpoints[url.base];
+		   		if (!endpoint) {
+		   			console.log(`sl.api.router: ${url.base} is not an endpoint`);
+		   			next(req, res);
+		   			return;
+		   		}
+
 		   		endpoint.start(require('querystring').parse(body))
 		   			.then(result => endpoint.react(result, req, res))
 		   			.then(() => next(req, res))
@@ -45,23 +48,34 @@ class SecureLoginApi {
 			}.bind(this));
 	}
 
-	/* ---------- on ----------*/
-	on(endpoint, func) {
-		if (typeof func !== "function") {
-			winston.warn("sl.api.on: parameter passed is not a valid function");
-			return this;
-		}
+	redirect(endpoint, routes) {
+		//parameter validation
+		if (!('success' in routes) || !('failure' in routes)) throw new Error("sl.api.redirect: routes does not contain both success and failure");
 
-		if (endpoint in this.callbacks) {
-			this.callbacks[endpoint].react = func;
-		} else {
-			winston.warn("sl.api.on: endpoint '%s' does not exist.", endpoint);
-		}
+		this.on(endpoint,
+                function (result, req, res) {
+					return new Promise(function (resolve, reject) {
+						let location = "../" + (result ? routes['success'] : routes['failure']);
+						res.writeHead(303, {'Location': location});
+						res.end();
+					}.bind(this));
+				});
 
 		return this;
 	}
 
-	/* ---------- default endpoint generataor ---------- */
+	on(endpoint, func) {
+		//parameter validation
+		if (typeof endpoint !== "string") throw new TypeError("sl.api.on: endpoint must be of type string");
+		if (typeof func !== "function") throw new TypeError("sl.api.on: func must be of type string");
+		if (!(endpoint in this.endpoints)) throw new ReferenceError(`sl.api.on: '${endpoint}' is not an endpoint.`);
+		if (func.length !== this.endpoints[endpoint].react.length) throw new Error(`sl.api.on: func must have strictly ${this.endpoints[endpoint].react.length} parameters.`);
+
+		this.endpoints[endpoint].react = func;
+
+		return this;
+	}
+
 	static createDefaultReactFunc(endpoint) {
 		return function (result, req, res) {
 			return new Promise((resolve, reject) => {
