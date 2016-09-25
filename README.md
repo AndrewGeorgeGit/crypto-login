@@ -1,49 +1,72 @@
 # secure-login
 ## what it is
-secure-login is a Node.js user authentication module that stores cryptographically secure password hashes according to the [these](https://nakedsecurity.sophos.com/2013/11/20/serious-security-how-to-store-your-users-passwords-safely/) guidelines. 
+secure-login (SL) is a Node.js user authentication and management system. User login information is stored in a sqlite3 database, laregely following [these guidelines for password storage.](https://nakedsecurity.sophos.com/2013/11/20/serious-security-how-to-store-your-users-passwords-safely/) There is also an interface for adding/removing users, authenticating users, and updating usernames/passwords.
 
 ## install
 `$ npm install secure-login`
 
+## setup
+```
+const sl = require('secure-login').start();
+
+//using SL with a regular http server
+require('http').createServer((req, res) => {
+  sl.api.route(req, res, next);
+});
+
+function next(req, res) { /* deal with requests not relevant to SL */ }
+```
+# managing users
 ## how it works
-secure-login currently uses a default sqlite3 database to manage its table of users.
+You can connect your client-side forms by using the [Form API](https://github.com/AndrewGeorgeGit/secure-login/wiki/Form-API). You also have the ability to call associated functions in your code for more low-level control. 
 
-It hashes passwords by generating a random salt at account creation and running the pbkdf2 algorithm with a HMAC-SHA-256 digest.
+## Form API example
+client-side:
+```
+<!-- all form actions must be directed towards /secure-login/${ENDPOINT} or they will fall through sl.api.router -->
+<!-- endpoints include: add-user, remove-user, change-username, change-password, login -->
+<form action='/secure-login/add-user' method=post>
+<input type=text name=username required>
+<input type=password name=password required>
+<input type=submit>
+</form>
+```
 
-## API
+sever-side:
+```
+//call the 'on' method to execute custom code after the desired action is completed
+//your custom code MUST return a Promise
+sl.api.on('add-user', (result, req, res) => {
+  return new Promise(function(resolve,reject) {
+    if (result) { /* user added successfully */ }
+    else { /* failed to add user (username taken) */ }
+    resolve();
+  }
+});
+
+//call the redirect method to route depending on the desired action's success or failure
+//you cannot call both 'on' and 'redirect' for the same endpoint (working on it)
+sl.api.redirect('add-user', {success: 'dashboard.html', failure: 'try_again.html'});
+```
+
+## function calls
 ```
 //initialization
-const sl = require("secure-login")();
+const sl = require("secure-login");
 
-//configuring secure-login.
-//number of times pbkdf2 algorithm will run
-//other options you can set: 'hash length', 'database path', 'table', 'username/password hash/salt/iterations column'
-sl.set("iteration count", 10000); 
-
-//opens the database
-//always call set() functions before start()
-//set() and start() calls can be chained
-sl.start();
-
-//add a user
-login.addUser("username", "password", err => {}); 
-
-//logg in a user. success is a boolean type
-login.authenticate("username", "password", (err, success) => {}); 
-
-//update username
-login.changeUsername("oldusername", "newusername", err => {});
-
-//update a user's password
-login.changePassword("username", "newpassword", err => {});
-
-//remove a user
-login.removeUser("username", err => {});
+// all functions (1) return a promise and (2) take a single argument 'credentials'
+// it is an object with relevant keys from username, password, newUsername, newPassword
+sl.authenticate({username: 'user', password: 'pass'});
+sl.addUser({username: 'user', password: 'pass'}); 
+sl.removeUser({username: 'user'});
+sl.changeUsername({username: 'user', newUsername: 'user2'});
+sl.changePassword({username: 'user', newPassowrd: 'pass2'});
 ```
 
 ## future plans
-- add more set options, including ones to alter the hashing algorithm's strength
-- Passportjs integration
-- web server API interface with possible Express integration
-- the ability to integrate with other database solutions
+- Passportjs support
+- Express support
+- Session management
+- allow sl.api.redirect to execute custom code
 - client-side javascript to verify username uniqueness and password strength
+- add more to wki
