@@ -1,6 +1,6 @@
 {
   "name": "secure-login",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "User management system which stores cryptographically secure password hashes.",
   "main": "secure-login.js",
   "scripts": {
@@ -24,7 +24,6 @@
   },
   "homepage": "https://github.com/AndrewGeorgeGit/secure-login#readme",
   "dependencies": {
-    "sqlite3": "^3.1.4",
-    "winston": "^2.2.0"
+    "sqlite3": "^3.1.4"
   }
 }
