@@ -6,6 +6,7 @@ secure-login (SL) is a Node.js user authentication and management system. User l
 `$ npm install secure-login`
 
 ## setup
+using http.Server:
 ```javascript
 const sl = require('secure-login').start();
 
@@ -16,7 +17,19 @@ require('http').createServer((req, res) => {
 
 function next(req, res) { /* deal with requests not relevant to SL */ }
 ```
-# managing users
+
+using express:
+```javascript
+//SL setup
+const sl = require('secure-login').start();
+sl.api.set('express', true);
+
+//express setup
+const app = require('express')();
+app.listen(3000);
+app.use(sl.api.router.bind(sl.api));
+```
+# under the hood
 ## how it works
 You can connect your client-side forms by using the [Form API](https://github.com/AndrewGeorgeGit/secure-login/wiki/Form-API). You also have the ability to call associated functions in your code for more low-level control. 
 
@@ -65,9 +78,8 @@ sl.changeUsername({username: 'user', newUsername: 'user2'});
 sl.changePassword({username: 'user', newPassowrd: 'pass2'});
 ```
 
-## future plans
+# future plans
 - Passportjs support
-- Express support
 - Session management
 - client-side javascript to verify username uniqueness and password strength
 - add more to the wiki

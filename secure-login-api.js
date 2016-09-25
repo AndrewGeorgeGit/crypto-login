@@ -2,6 +2,10 @@ const assert = require('assert');
 
 class SecureLoginApi {
 	constructor(endpoints) { //regular expression validation of endpoints
+		this.settings = {
+			express: false
+		};
+
 		this.endpoints = {};
 		for (let endpoint in endpoints) {
 			let epFunc = endpoints[endpoint];
@@ -23,7 +27,17 @@ class SecureLoginApi {
 		}
 	}
 
-	router(req, res, next) {
+	set(key, val) {
+		if (!(key in this.settings)) return new Error("sl.api.set: ${key} is not a setting");
+		this.settings[key] = val;
+	}
+
+	router(req, res, n = ()=>{}) {
+		let next = (req, res) => {
+			if (this.settings['express']) n();
+			else n(req, res);
+		};
+
 		//parameter validation
 		if (!req || !res || typeof req !== "object" || typeof res !== "object") throw new Error("sl.api.router: req, res must be non-null objects");
 		if (typeof next !== "function") throw new TypeError("sl.api.router: next must be a function");
