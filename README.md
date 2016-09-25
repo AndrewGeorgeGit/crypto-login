@@ -6,13 +6,13 @@ secure-login (SL) is a Node.js user authentication and management system. User l
 `$ npm install secure-login`
 
 ## setup
-```
+```javascript
 const sl = require('secure-login').start();
 
 //using SL with a regular http server
 require('http').createServer((req, res) => {
-  sl.api.route(req, res, next);
-});
+  sl.api.router(req, res, next);
+}).listen(3000);
 
 function next(req, res) { /* deal with requests not relevant to SL */ }
 ```
@@ -22,7 +22,7 @@ You can connect your client-side forms by using the [Form API](https://github.co
 
 ## Form API example
 client-side:
-```
+```html
 <!-- all form actions must be directed towards /secure-login/${ENDPOINT} or they will fall through sl.api.router -->
 <!-- endpoints include: add-user, remove-user, change-username, change-password, login -->
 <form action='/secure-login/add-user' method=post>
@@ -33,10 +33,9 @@ client-side:
 ```
 
 sever-side:
-```
-//call the 'on' method to execute custom code after the desired action is completed
-//your custom code MUST return a Promise
-sl.api.on('add-user', (result, req, res) => {
+```javascript
+//the function passed to the 'on' or 'redirect' methods MUST return a Promise 
+let func = (result, req, res) => {
   return new Promise(function(resolve,reject) {
     if (result) { /* user added successfully */ }
     else { /* failed to add user (username taken) */ }
@@ -44,13 +43,16 @@ sl.api.on('add-user', (result, req, res) => {
   }
 });
 
-//call the redirect method to route depending on the desired action's success or failure
-//you cannot call both 'on' and 'redirect' for the same endpoint (working on it)
-sl.api.redirect('add-user', {success: 'dashboard.html', failure: 'try_again.html'});
+//func will be executed after SL attempts to add the user
+sl.api.on('add-user', func);
+
+//sl.api.redirect will redirect you to relevant success/failure pages
+//func is an optional parameter
+sl.api.redirect('add-user', {success: 'dashboard.html', failure: 'try_again.html'}, func);
 ```
 
 ## function calls
-```
+```javascript
 //initialization
 const sl = require("secure-login");
 
@@ -67,6 +69,5 @@ sl.changePassword({username: 'user', newPassowrd: 'pass2'});
 - Passportjs support
 - Express support
 - Session management
-- allow sl.api.redirect to execute custom code
 - client-side javascript to verify username uniqueness and password strength
-- add more to wki
+- add more to the wiki

@@ -14,8 +14,11 @@ class SecureLoginApi {
 
 			//continuing object construction
 			this.endpoints[endpoint] = {
-				"start": epFunc,
-				"react": SecureLoginApi.createDefaultReactFunc(endpoint)
+				result: undefined,
+				start: epFunc,
+				receive: (result) => new Promise(function (resolve, reject) {this.result = result; resolve()}.bind(this.endpoints[endpoint])),
+				react: SecureLoginApi.createDefaultReactFunc(endpoint),
+				redirect: Promise.resolve()
 			}
 		}
 	}
@@ -42,24 +45,29 @@ class SecureLoginApi {
 		   		}
 
 		   		endpoint.start(require('querystring').parse(body))
-		   			.then(result => endpoint.react(result, req, res))
+		   			.then(result => endpoint.receive(result))
+		   			.then(() => endpoint.react(endpoint.result, req, res))
+		   			.then(() => endpoint.redirect(endpoint.result, req, res)) //having to pass more
 		   			.then(() => next(req, res))
 		   			.catch(err => { console.log(err); next(req, res); });
 			}.bind(this));
 	}
 
-	redirect(endpoint, routes) {
+	redirect(endpoint, routes, func = null) {
 		//parameter validation
-		if (!('success' in routes) || !('failure' in routes)) throw new Error("sl.api.redirect: routes does not contain both success and failure");
+		if (!(endpoint in this.endpoints)) throw new ReferenceError(`sl.api.on: '${endpoint}' is not an endpoint.`);
+		if (!('success' in routes) || !('failure' in routes)) throw new Error("sl.api.redirect: routes does not contain both success and failure");1
 
-		this.on(endpoint,
-                function (result, req, res) {
-					return new Promise(function (resolve, reject) {
-						let location = "../" + (result ? routes['success'] : routes['failure']);
-						res.writeHead(303, {'Location': location});
-						res.end();
-					}.bind(this));
-				});
+		this.endpoints[endpoint].redirect = (result, req, res) => {
+			return new Promise(function (resolve, reject) {
+				let location = "../" + (result ? routes['success'] : routes['failure']);
+				res.writeHead(303, {'Location': location});
+				res.end();
+			});
+		};
+
+		if (func === null) this.endpoints[endpoint].react = Promise.resolve();
+		else this.on(endpoint, func);
 
 		return this;
 	}
