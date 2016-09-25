@@ -3,7 +3,7 @@ const SecureLoginApi =require("./secure-login-api.js");
 
 class SecureLogin {
 	constructor() {
-		this.db = require("./secure-login-table");
+		this.db = require("./secure-login-database");
 		this.api = new SecureLoginApi({
 			'add-user': this.addUser.bind(this),
 			'remove-user': this.removeUser.bind(this),
@@ -61,11 +61,14 @@ class SecureLogin {
 	authenticate(credentials) {
 		return new Promise(function (resolve, reject) {
 			this.db.selectUser(credentials)
-				.then(row => hash(this, row.salt, credentials.password, (err, salt, hash) => {
-					if (err) reject(err);
-					else if (hash === row.hash) resolve(true);
-					else resolve(false);
-				}))
+				.then(row => {
+					if (!row) { resolve(false); return; }
+					hash(this, row.salt, credentials.password, (err, salt, hash) => {
+						if (err) reject(err);
+						else if (hash === row.hash) resolve(true);
+						else resolve(false);
+					})
+				})
 				.catch(err => reject(err));
 		}.bind(this));
 	}

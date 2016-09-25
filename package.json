@@ -1,6 +1,6 @@
 {
   "name": "secure-login",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "User management system which stores cryptographically secure password hashes.",
   "main": "secure-login.js",
   "scripts": {
