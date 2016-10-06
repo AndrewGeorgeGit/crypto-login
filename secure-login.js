@@ -4,6 +4,7 @@ const SecureLoginApi =require("./secure-login-api.js");
 class SecureLogin {
 	constructor() {
 		this.db = require("./secure-login-database");
+		this.sessionManager = require('./secure-login-session.js');
 		this.api = new SecureLoginApi({
 			'add-user': this.addUser.bind(this),
 			'remove-user': this.removeUser.bind(this),
@@ -12,6 +13,9 @@ class SecureLogin {
 			'login': this.authenticate.bind(this)
 		});
 		this.settings = {
+			sessions: true,
+			router: true,
+			express: false,
 			"iterations": 20000,
 			"hash length": 64
 		}
@@ -20,6 +24,25 @@ class SecureLogin {
 	start() {
 		this.db.start();
 		return this;
+	}
+
+	set(property, value) {
+		if (!(property in this.settings)) throw new Error(`sl.set: '${property}' is not a valid property.`);
+		this.settings[property] = value; //todo: validate property type
+		return this;
+	}
+	
+	middleware(req, res, n = ()=>{}) {
+		let next = (req, res) => {
+			if (this.settings['express']) n();
+			else n(req, res);
+		};
+
+		Promise.resolve()
+			.then(() => this.settings['sessions'] ? this.sessionManager.attachSession(req, res) : Promise.resolve())
+			.then(() => this.settings['router'] ? this.api.router(req, res) : Promise.resolve())
+			.then(() => next(req, res))
+			.catch((err) => {console.log(err); next(req, res);})
 	}
 
 	addUser(credentials) {

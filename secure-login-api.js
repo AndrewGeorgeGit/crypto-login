@@ -32,39 +32,37 @@ class SecureLoginApi {
 		this.settings[key] = val;
 	}
 
-	router(req, res, n = ()=>{}) {
-		let next = (req, res) => {
-			if (this.settings['express']) n();
-			else n(req, res);
-		};
+	router(req, res) { //it doesn't return anything
 
 		//parameter validation
 		if (!req || !res || typeof req !== "object" || typeof res !== "object") throw new Error("sl.api.router: req, res must be non-null objects");
-		if (typeof next !== "function") throw new TypeError("sl.api.router: next must be a function");
 
-		const url = require('path').parse(req.url);
-		if (url.dir !== "/secure-login") {
-			next(req, res);
-			return;
-		}
+		return new Promise(function (resolve, reject) {
+			const url = require('path').parse(req.url);
+			if (url.dir !== "/secure-login") {
+				resolve();
+				return;
+			}
 
-		let body = "";
-		req.on('data', d => body += d)
-		   .on('end', function() {
-		   		let endpoint = this.endpoints[url.base];
-		   		if (!endpoint) {
-		   			console.log(`sl.api.router: ${url.base} is not an endpoint`);
-		   			next(req, res);
-		   			return;
-		   		}
+			//
+			let endpoint = this.endpoints[url.base];
+	   		if (!endpoint) {
+	   			console.log(`sl.api.router: ${url.base} is not an endpoint`);
+	   			resolve();
+	   			return;
+	   		}
 
-		   		endpoint.start(require('querystring').parse(body))
-		   			.then(result => endpoint.receive(result))
-		   			.then(() => endpoint.react(endpoint.result, req, res))
-		   			.then(() => endpoint.redirect(endpoint.result, req, res)) //having to pass more
-		   			.then(() => next(req, res))
-		   			.catch(err => { console.log(err); next(req, res); });
-			}.bind(this));
+			let body = "";
+			req.on('data', d => body += d)
+			   .on('end', function() {
+			   		endpoint.start(require('querystring').parse(body))
+			   			.then(result => endpoint.receive(result))
+			   			.then(() => endpoint.react(endpoint.result, req, res))
+			   			.then(() => endpoint.redirect(endpoint.result, req, res)) //having to pass more
+			   			.then(() => resolve())
+			   			.catch(err => { console.log(err); resolve(); });
+				});
+		}.bind(this));
 	}
 
 	redirect(endpoint, routes, func = null) {
