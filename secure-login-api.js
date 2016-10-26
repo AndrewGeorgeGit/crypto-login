@@ -20,7 +20,7 @@ class SecureLoginApi {
 			this.endpoints[endpoint] = {
 				result: undefined,
 				start: epFuncs.startFunc,
-				receive: (result) => new Promise(function (resolve, reject) {this.result = result; resolve()}.bind(this.endpoints[endpoint])),
+				receive: (result) => new Promise(function (resolve, reject) {this.result = result; resolve();}.bind(this.endpoints[endpoint])),
 				manageSession: epFuncs.sessionFunc,
 				react: SecureLoginApi.createDefaultReactFunc(endpoint),
 				redirect: Promise.resolve()

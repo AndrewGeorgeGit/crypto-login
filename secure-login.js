@@ -3,6 +3,7 @@ const SecureLoginApi =require("./secure-login-api.js");
 
 class SecureLogin {
 	constructor() {
+		this.bStarted = false;
 		this.settings = {
 			express: false,
 			"iterations": 20000, //todo: make setting property
@@ -20,28 +21,43 @@ class SecureLogin {
 		});
 	}
 
+
+
+
+
 	bundleApiFunctions(db, session) {
 		let sessionFunction = () => Promise.resolve();
-		if (this.settings.sessions && session) { //am I calling this too early? Yes.
+		if (session) { //todo: disable this function on the session end
 			session.bind(this.sessionManager);
-			sessionFunction = (result, req, res) => { //todo: change result to success
+			sessionFunction = (success, req, res) => { //todo: change result to success
 				let s = session.bind(this.sessionManager);
-				return (result ? s(req, res) : Promise.resolve()); //todo: careful for 'this' binding
+				return (success ? s(req, res) : Promise.resolve());
 			}
 		}
+
 		return {
 			startFunc: db,
 			sessionFunc: sessionFunction
 		};
 	}
 
+
+
+
+
 	start() {
+		this.bStarted = true;
 		this.db.start();
 		return this;
 	}
 
+
+
+
+
 	//todo: disable value setting after s-l has started
 	set(property, value) { //set various properties of sl components,
+		if (this.bStarted) throw new Error('sl.set: you cannot call sl.set() once sl has been started.');
 		if (typeof property !== "string") throw new TypeError('sl.set: property is not a string.');
 
 		const componentSetPropertyFuncs = {
@@ -58,6 +74,10 @@ class SecureLogin {
 		return this;
 	}
 
+
+
+
+
 	setProperty(property, value) { //enable and disable functions
 		switch(property[0]) {
 			case 'express':
@@ -70,7 +90,11 @@ class SecureLogin {
 				break;
 		}
 	}
-	
+
+
+
+
+
 	middleware(req, res, n = ()=>{}) {
 		let next = (req, res) => {
 			if (this.settings['express']) n();
@@ -83,6 +107,10 @@ class SecureLogin {
 			.then(() => next(req, res))
 			.catch((err) => {console.log(err); next(req, res);})
 	}
+
+
+
+
 
 	addUser(credentials) {
 		//parameter validation
