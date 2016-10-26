@@ -3,9 +3,13 @@ const sqlite3 = require("sqlite3").verbose();
 class SecureLoginDatabase {
 	constructor() {
 		this.db = null;
-		this.path = "./secure_login.db";
 
-		this.usersTable = "users"
+		this.settings = {
+			path: "./secure_login.db"
+		};
+
+		this.usersTable = "users";
+
 		this.tables = {
 			[this.usersTable]: {
 				username: 'TEXT PRIMARY KEY',
@@ -17,7 +21,7 @@ class SecureLoginDatabase {
 	}
 
 	start() { //what to do if this operation fails?
-		this.db = new sqlite3.Database(this.path);
+		this.db = new sqlite3.Database(this.settings.path);
 		var sql = "";
 		for (let table in this.tables) {
 			sql = `CREATE TABLE IF NOT EXISTS ${table} (`;
@@ -32,6 +36,17 @@ class SecureLoginDatabase {
 		}.bind(this));
 	}
 
+	setProperty(property, value) {
+		switch(property[0]) {
+			case 'path':
+				if (typeof value !== "string") throw new TypeError('sl.db.setProperty: desired sl."' + property[0] +'" value is not of required type string.');
+				break;
+			default:
+				throw new ReferenceError('sl.db.setProperty: "' + property[0] + '" is not an sl.db property. You cannot set its value.');
+				break;
+		}
+	} //todo: write
+	
 	insertUser(column_values) {
 		//parameter validation
 		if(Object.keys(this.tables[this.usersTable]).find(k => !(k in column_values))) return new Error("sl.db.insertUser: not all column values supplied");

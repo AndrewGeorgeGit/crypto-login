@@ -3,37 +3,48 @@ const assert = require('assert');
 class SecureLoginApi {
 	constructor(endpoints) { //regular expression validation of endpoints
 		this.settings = {
-			express: false
+			express: false,
+			use: true
 		};
 
 		this.endpoints = {};
 		for (let endpoint in endpoints) {
-			let epFunc = endpoints[endpoint];
-
+			let epFuncs = endpoints[endpoint]; //endpoints[endpoint]; todo: change error checking
 			//parameter validation
 			let err = null;
-			if (typeof epFunc !== 'function') err = new Error("sl.api.constructor: every endpoint must have associated start function");
-			else if (epFunc.length !== 1) err = new Error("sl.api.constructor: not every endpoint start function takes only 1 parameter");
+			//if (typeof epFuncs !== 'function') err = new Error("sl.api.constructor: every endpoint must have associated start function");
+			//else if (epFuncs.length !== 1) err = new Error("sl.api.constructor: not every endpoint start function takes only 1 parameter");
 			if (err) { this.endpoints = {}; throw err; } //cleanup before throwing
 
 			//continuing object construction
 			this.endpoints[endpoint] = {
 				result: undefined,
-				start: epFunc,
+				start: epFuncs.startFunc,
 				receive: (result) => new Promise(function (resolve, reject) {this.result = result; resolve()}.bind(this.endpoints[endpoint])),
+				manageSession: epFuncs.sessionFunc,
 				react: SecureLoginApi.createDefaultReactFunc(endpoint),
 				redirect: Promise.resolve()
 			}
 		}
 	}
 
-	set(key, val) {
-		if (!(key in this.settings)) return new Error("sl.api.set: ${key} is not a setting");
-		this.settings[key] = val;
+	setProperty(property, value) {
+		switch(property[0]) {
+			//boolean values
+			case 'express':
+			case 'use':
+				if (typeof value !== "boolean") throw new TypeError('sl.api.setProperty: desired sl.api."' + property[0] +'" value is not of required type boolean.');
+				this.settings[property[0]] = value;
+				break;
+			default:
+				throw new ReferenceError('sl.api.setProperty: "' + property[0] + '" is not a sl.api property. You cannot set its value.');
+				break;
+		}
 	}
 
-	router(req, res) { //it doesn't return anything
-
+	router(req, res) { //todo: make middleware function
+		if (!this.settings.use) return Promise.resolve(); //todo: is this all that need to be done in terms of disabling?
+		
 		//parameter validation
 		if (!req || !res || typeof req !== "object" || typeof res !== "object") throw new Error("sl.api.router: req, res must be non-null objects");
 
@@ -57,10 +68,11 @@ class SecureLoginApi {
 			   .on('end', function() {
 			   		endpoint.start(require('querystring').parse(body))
 			   			.then(result => endpoint.receive(result))
+			   			.then(() => endpoint.manageSession(endpoint.result, req, res))
 			   			.then(() => endpoint.react(endpoint.result, req, res))
 			   			.then(() => endpoint.redirect(endpoint.result, req, res)) //having to pass more
 			   			.then(() => resolve())
-			   			.catch(err => { console.log(err); resolve(); });
+			   			.catch(err => { console.log(err, "from sl.api"); resolve(); });
 				});
 		}.bind(this));
 	}
@@ -78,7 +90,7 @@ class SecureLoginApi {
 			});
 		};
 
-		if (func === null) this.endpoints[endpoint].react = Promise.resolve();
+		if (func === null) this.endpoints[endpoint].react = () => Promise.resolve(); //todo: are we sure we want to overwrite this?
 		else this.on(endpoint, func);
 
 		return this;
