@@ -9,12 +9,8 @@ class SecureLoginApi {
 
 		this.endpoints = {};
 		for (let endpoint in endpoints) {
-			let epFuncs = endpoints[endpoint]; //endpoints[endpoint]; todo: change error checking
-			//parameter validation
-			let err = null;
-			//if (typeof epFuncs !== 'function') err = new Error("sl.api.constructor: every endpoint must have associated start function");
-			//else if (epFuncs.length !== 1) err = new Error("sl.api.constructor: not every endpoint start function takes only 1 parameter");
-			if (err) { this.endpoints = {}; throw err; } //cleanup before throwing
+			//todo: assert/error check
+			let epFuncs = endpoints[endpoint];
 
 			//continuing object construction
 			this.endpoints[endpoint] = {
@@ -42,11 +38,8 @@ class SecureLoginApi {
 		}
 	}
 
-	router(req, res) { //todo: make middleware function
-		if (!this.settings.use) return Promise.resolve(); //todo: is this all that need to be done in terms of disabling?
-		
-		//parameter validation
-		if (!req || !res || typeof req !== "object" || typeof res !== "object") throw new Error("sl.api.router: req, res must be non-null objects");
+	router(req, res) {
+		if (!this.settings.use) return Promise.resolve();
 
 		return new Promise(function (resolve, reject) {
 			const url = require('path').parse(req.url);
@@ -55,7 +48,6 @@ class SecureLoginApi {
 				return;
 			}
 
-			//
 			let endpoint = this.endpoints[url.base];
 	   		if (!endpoint) {
 	   			console.log(`sl.api.router: ${url.base} is not an endpoint`);
@@ -70,7 +62,7 @@ class SecureLoginApi {
 			   			.then(result => endpoint.receive(result))
 			   			.then(() => endpoint.manageSession(endpoint.result, req, res))
 			   			.then(() => endpoint.react(endpoint.result, req, res))
-			   			.then(() => endpoint.redirect(endpoint.result, req, res)) //having to pass more
+			   			.then(() => endpoint.redirect(endpoint.result, req, res))
 			   			.then(() => resolve())
 			   			.catch(err => { console.log(err, "from sl.api"); resolve(); });
 				});

@@ -85,7 +85,7 @@ class SecureLoginSession {
 			maxAge = 0;
 		} else {
 			maxAge = this.settings.timeouts[(name === this.authCookie) ? "auth" : "anon"].max;
-			if (maxAge === -1) { maxAge = null; } //todo: define constant
+			if (maxAge === -1) maxAge = undefined;
 		}
 
 		//secure
@@ -97,7 +97,7 @@ class SecureLoginSession {
 		res.setHeader("Set-Cookie", cookie.serialize(name, value, {
 			httpOnly: true,
 			secure: secure,
-			maxAge: maxAge / 1000,
+			maxAge: maxAge / 1000 || undefined,
 			path: path
 		})); //todo: I.E. integration
 	}
@@ -153,14 +153,16 @@ class SecureLoginSession {
 	authenticate(req, res) {
 		return new Promise(function (fufill, reject) {
 			if (req.session && req.session.authenticated) { fufill(); return; } //todo: what about reauthenication?
-			this.createSession().
-				then(session => {
+			this.createSession()
+				.then(session => {
 					session.authenticated = true;
-					if (req.session) { //if anonymous session exists, bind the sessions
+					if (req.session) { //bind anonymous and authenticated sessions
 						session.lastUsed = req.session.lastUsed;
+						session.lastUsed = new Date();
 						session.data.public = req.session.data.public;
 					}
 					req.session = session;
+
 					this.attachCookie(res, this.authCookie, session.id);
 					fufill();
 				});
