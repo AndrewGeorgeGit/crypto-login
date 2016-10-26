@@ -40,6 +40,7 @@ class SecureLoginDatabase {
 		switch(property[0]) {
 			case 'path':
 				if (typeof value !== "string") throw new TypeError('sl.db.setProperty: desired sl."' + property[0] +'" value is not of required type string.');
+				this.settings.path = value;
 				break;
 			default:
 				throw new ReferenceError('sl.db.setProperty: "' + property[0] + '" is not an sl.db property. You cannot set its value.');
