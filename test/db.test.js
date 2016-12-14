@@ -1,82 +1,145 @@
-const db = require('../database');
 const mocha = require('mocha');
 const sinon = require('sinon');
-const hash = require('../hash');
 const assert = require('assert');
+const hash = require('../hash');
+const db = require('../database');
+const slCodes = require('../codes');
 
 
 
 describe('Database', function() {
    before(function(done) {
+      db.setProperty(["path"], ":memory:");
       db.start(done);
    });
 
+
+
+
+
+   //add 'username'/'password'
    describe('#addUser', function() {
       const creds = new db.Credentials({$username: "username", $password: "password"});
-      it('should hash credentials object before placing it in database', done => {
-         db.addUser(creds, err => { //adding user
+      describe('case: user does not already exist', function() {
+         let err, receipt;
+         before(function(done) {
+            db.addUser(creds, (e, r) => {
+               err = e;
+               receipt = r;
+               done();
+            });
+         });
+
+         it('no sqlite error thrown', () => { if (err) throw err; });
+         it('receipt contains passed username', () => assert(receipt.username === creds.get("$username")));
+         it('receipt indicates success', () => assert(receipt.success));
+         it("receipt's failReason indicates 'NONE'", () => assert(receipt.failReason === slCodes.NONE));
+         it('user appears in database correctly', done => {
             db.db.get(`SELECT * FROM ${db.tableName} WHERE username=?`, creds.get("$username"), (err, row) => { //confirming user was added to database correctly
                assert(creds.get("$username") === row.username);
                assert(creds.get("$iterations") === row.iterations);
                assert(creds.get("$salt") === row.salt);
                assert(creds.get("$hash") === row.hash);
-               done();
+               done(err);
             });
          });
       });
 
-      it('should alert that username already exists', done => {
-         db.addUser(creds, err => done(assert(err)));
+      describe("case: user already exists", function() {
+         let err, receipt;
+         before(function(done) {
+            db.addUser(creds, (e, r) => {
+               err = e;
+               receipt = r;
+               done();
+            });
+         });
+
+         it('no sqlite error thrown', () => { if (err) throw err; });
+         it('receipt contains passed username', () => assert(receipt.username === creds.get("$username")));
+         it('receipt indicates failure', () => assert(!receipt.success));
+         it("receipt's failReason indicates 'USER_EXISTS'", () => assert(receipt.failReason === slCodes.USER_EXISTS));
       });
    });
-})
-//describe('Add User to Database');
-describe('Secure Login Database', function() {
-   // this.timeout(9999);
-   // beforeEach(function() { sinon.sandbox.create(); });
-   // afterEach(function() { sinon.sandbox.restore(); });
-   //
-   // db.start();
-   // describe("#hash", function() {
-   //
-   //    const creds = new db.Credentials({$username: "username", $password: "password"});
-   //    hash(creds, () => {console.log(creds)});
-   //
-   //
-   //    it('should add $hash member to Credentials object', done => {assert(creds.has("$hash"))});
-   //    it('$hash should have settings-specified length', () => assert(creds.get("$hash").length === hash.settings.hashLength));
-   //    it('should add $salt member to Credentials object', () => assert(creds.has("$salt")));
-   //    it('$salt should have settings-specified length', () => assert(creds.get("$salt").length === hash.settings.hashLength));
-   //    it('should add $iterations member to Credentials object', () => assert(creds.has("$iterations")));
-   //    it('$iterations should have settings-specified value', () => assert(creds.get("$iterations") === hash.settings.iterations));
-   // });
-   // describe("#start", function() {});
-   //
-   // describe("#addUser", function() {
-   //    it('should take Credentials object, hash its password, and store the new user in databse', function(done) {
-   //       const creds = new db.Credentials({$username: "username", $password: "password"});
-   //
-   //    });
-   //
-   //    it('should experience an error trying to add an already existing username', function(done) {
-   //
-   //    });
-   //
-   //    //it('')
-   // });
-   // db.start();
-   // it('#hash', function(done) {
-   //    const creds = new db.Credentials({$username: "username", $password: "password"});
-   //
-   // });
-   //
-   // it('#addUser', function(done) {
-   //    const creds = new db.Credentials({$username: "username", $password: "password"});
-   //    sinon.sandbox.stub(hash, "", function(credentials, callback) {
-   //       credentials.addHashObj({$hash: "hash", $salt: "salt", $iterations: 100});
-   //       callback();
-   //    });
-   //
-   //    db.addUser(creds, done);
-   // });
+
+
+
+
+   
+   //check for 'username'/'password'
+   describe("#authenticateUser", function() {
+      const creds = new db.Credentials({$username: "invalid_username", $password: "invalid_password"});
+      describe("case: invalid username", function() {
+         let err, receipt;
+         before(function(done) {
+            db.authenticateUser(creds, (e, r) => {
+               err = e;
+               receipt = r;
+               done();
+            });
+         });
+         it('no sqlite error', () => { if(err) throw err; });
+         it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
+         it('receipt indicates failure', () => assert(!receipt.success));
+         it('receipt indicates failure caused by invalid username', () => assert(receipt.failReason === slCodes.USER_DNE));
+      });
+
+      describe("case: valid username, invalid password", function() {
+         let err, receipt;
+         before(function(done) {
+            creds.set("$username", "username");
+            db.authenticateUser(creds, (e, r) => {
+               err = e;
+               receipt = r;
+               done();
+            });
+         });
+         it('no sqlite error', () => { if(err) throw err; });
+         it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
+         it('receipt indicates failure', () => assert(!receipt.success));
+         it('receipt indicates failure caused by invalid password', () => assert(receipt.failReason === slCodes.PASSWORD_INVALID));
+      });
+
+      describe("case: valid username and password", function() {
+         let err, receipt;
+         before(function(done) {
+            creds.set("$password", "password");
+            db.authenticateUser(creds, (e, r) => {
+               err = e;
+               receipt = r;
+               done();
+            });
+         });
+         it('no sqlite error', () => { if(err) throw err; });
+         it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
+         it('receipt indicates success', () => assert(receipt.success));
+         it('receipt failure reason is NONE', () => assert(receipt.failReason === slCodes.NONE));
+      });
+   });
+
+
+   describe("#removeUser", function() {
+      const creds = new db.Credentials({$username: "username"});
+      describe("case: user exists", function() {
+         let err, receipt;
+         before(function(done) {
+            db.removeUser(creds, (e, r) => { err = e; receipt = r; done(); })
+         });
+         it('no sqlite error', () => { if(err) throw err; });
+         it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
+         it('receipt indicates success', () => assert(receipt.success));
+         it('receipt failure reason is NONE', () => assert(receipt.failReason === slCodes.NONE));
+      });
+
+      describe("case: user does not exist", function() {
+         let err, receipt;
+         before(function(done) {
+            db.removeUser(creds, (e, r) => { err = e; receipt = r; done(); })
+         });
+         it('no sqlite error', () => { if(err) throw err; });
+         it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
+         it('receipt indicates failure', () => assert(!receipt.success));
+         it('receipt failure is caused by user not existing', () => assert(receipt.failReason === slCodes.USER_DNE));
+      });
+   });
 });

@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3');
 const hash = require('./hash');
+const slCodes = require('./codes');
 
 
 class Credentials {
@@ -34,6 +35,20 @@ class Credentials {
 		};
 	}
 }
+class DatabaseReceipt {
+	constructor(username) {
+		this.username = username;
+		this.failReason = slCodes.NONE;
+	}
+
+	setSuccess(success) {
+		this.success = success;
+	}
+
+	setFailReason(failReason) {
+		this.failReason = failReason;
+	}
+}
 
 class SecureLoginDatabase {
 	constructor() {
@@ -42,7 +57,7 @@ class SecureLoginDatabase {
 
 		//options which can be overriden by the users
 		this.settings = {
-			dbPath: "./secure_login.db"
+			path: "./secure_login.db"
 		}
 
 		//table schema
@@ -55,8 +70,20 @@ class SecureLoginDatabase {
 		}
 	}
 
+	setProperty(property, value) {
+		switch(property[0]) {
+			case 'path':
+				if (typeof value !== "string") throw new TypeError('sl.db.setProperty: desired sl.db."' + property[0] +'" value is not of required type string.');
+				this.settings[property[0]] = value;
+				break;
+			default:
+				throw new ReferenceError('sl.db.setProperty: "' + property[0] + '" is not a sl.db property. You cannot set its value.');
+				break;
+		}
+	}
+
 	start(callback) {
-		this.db = new sqlite3.Database(this.settings.dbPath); //todo: still puts db in relative path, close
+		this.db = new sqlite3.Database(this.settings.path); //todo: still puts db in relative path, close
 
 		//creating table if need be
 		let sql = `CREATE TABLE IF NOT EXISTS ${this.tableName}`;
@@ -95,19 +122,68 @@ class SecureLoginDatabase {
 			sql += `(${columns.slice(0, -1)}) VALUES (${values.slice(0,-1)})`;
 
 			//executing
-			singleton.db.run(sql, credentials.rowFormat(), err => callback(err)); //todo: consider returning username
+			singleton.db.run(sql, credentials.rowFormat(), err => {
+				const receipt = new DatabaseReceipt(credentials.get("$username"));
+				if (!err) {
+					receipt.setSuccess(true);
+					callback(null, receipt);
+				}
+				else if (err.errno === 19) {
+					receipt.setSuccess(false);
+					receipt.setFailReason(slCodes.USER_EXISTS);
+					callback(null, receipt);
+				}
+				else {
+					callback(err);
+				}
+			}); //todo: consider returning username
 		})();
 	}
 
 	authenticateUser(credentials, callback) {
 		this.db.get(`SELECT * FROM ${singleton.tableName} WHERE username=?`, credentials.get("$username"), (err, row) => {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
 
+			if (err) {
+				callback(err);
+				return;
+			} else if (!row) {
+				receipt.setSuccess(false);
+				receipt.setFailReason(slCodes.USER_DNE);
+				callback(null, receipt); //todo: should receipt return an invalid username?
+				return;
+			}
+
+			credentials.set("$iterations", row.iterations);
+			credentials.set("$salt", row.salt);
+			hash(credentials, () => {
+				if (credentials.get("$hash") === row.hash) {
+					receipt.setSuccess(true);
+					callback(null, receipt);
+				} else {
+					receipt.setSuccess(false);
+					receipt.setFailReason(slCodes.PASSWORD_INVALID);
+					callback(null, receipt);
+				}
+			});
 		});
-		//find username, hash passed password, compare it to has
 	}
 
-	removeUser(credentials) {
+	removeUser(credentials, callback) {
+		this.db.run(`DELETE FROM ${singleton.tableName} WHERE username=?`, credentials.get("$username"), function(err) {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
 
+			if (err) {
+				callback(err);
+				return;
+			} else if (this.changes === 0) { //no row was deleted
+				receipt.setSuccess(false);
+				receipt.setFailReason(slCodes.USER_DNE);
+			} else {
+				receipt.setSuccess(true);
+			}
+			callback(null, receipt);
+		});
 	}
 
 	changeUsername(credentials) {
