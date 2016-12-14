@@ -10,7 +10,7 @@ class SecureLogin {
 			"hash length": 64	//todo: make setting property
 		}
 
-		this.db = require("./secure-login-database");
+		this.db = require("./database");
 		this.sessionManager = require('./secure-login-session.js');
 		this.api = new SecureLoginApi({
 			'add-user': this.bundleApiFunctions(this.addUser.bind(this)),
@@ -64,7 +64,8 @@ class SecureLogin {
 			sl: this.setProperty.bind(this), //todo: why do I have to bind?
 			api: this.api.setProperty.bind(this.api),
 			db: this.db.setProperty.bind(this.db), //todo: finish here
-			sessions: this.sessionManager.setProperty.bind(this.sessionManager)
+			sessions: this.sessionManager.setProperty.bind(this.sessionManager),
+			hash: this.db.setProperty.bind(this.db);
 		};
 		property = property.split('.');
 		const setPropertyFunc = componentSetPropertyFuncs[property[0]];
@@ -107,83 +108,6 @@ class SecureLogin {
 			.then(() => next(req, res))
 			.catch((err) => {console.log(err); next(req, res);})
 	}
-
-
-
-
-
-	addUser(credentials) {
-		//parameter validation
-		if (!('password' in credentials)) throw new Error("sl.addUser: no password provided");
-		if (!('username' in credentials)) throw new Error("sl.addUser: no username provided");
-
-		return new Promise(function (resolve, reject) {
-			hash(this, null, credentials.password, (err, salt, hash) => {
-				this.db.insertUser({username: credentials.username, salt: salt, hash: hash, iterations: this.settings.interations})
-				       .then(result => resolve(result))
-				       .catch(err => reject(err));
-			});
-		}.bind(this));
-	}
-
-	removeUser(credentials) {
-		return this.db.deleteUser(credentials);
-	}
-
-	changeUsername(credentials) {
-		return this.db.updateUsername(credentials);
-	}
-
-	changePassword(credentials) {
-		//parameter validation
-		if (!('newPassword' in credentials)) throw new Error("sl.changePassword: no newPassword provided");
-		if (!('username' in credentials)) throw new Error("sl.changePassword: no username provided");
-
-		return new Promise(function (resolve, reject) {
-			hash(this, null, credentials.newPassword, (err, salt, hash) => {
-				this.db.updatePassword({username: credentials.username, salt: salt, hash: hash, iterations: this.settings.interations})
-					.then(result => resolve(result))
-					.catch(err => reject(err));
-			});
-		}.bind(this));
-	}
-
-	authenticate(credentials) {
-		return new Promise(function (resolve, reject) {
-			this.db.selectUser(credentials)
-				.then(row => {
-					if (!row) { resolve(false); return; }
-					hash(this, row.salt, credentials.password, (err, salt, hash) => {
-						if (err) reject(err);
-						else if (hash === row.hash) resolve(true);
-						else resolve(false);
-					})
-				})
-				.catch(err => reject(err));
-		}.bind(this));
-	}
-}
-
-function hash(obj, salt, msg, cb) {
-	//generating random salt if necessary
-	if (salt === null) {
-		crypto.randomBytes(obj.settings["hash length"], (err, salt) => {
-			if (err) { cb(err); return; }
-			hash(obj, salt.toString("hex"), msg, cb);
-		});
-		return;
-	}
-
-	//type checking
-	if (typeof salt === "string") {
-		salt = Buffer.from(salt, "hex");
-	}
-
-	//actually hashing
-	crypto.pbkdf2(msg, salt, obj.settings["iterations"], obj.settings["hash length"], "sha256", (err, msg_hash) => { //doesn't rely on db values stored
-		if (err) { cb(err); return; }
-		cb(null, salt.toString("hex"), msg_hash.toString("hex"));
-	});
 }
 
 module.exports = new SecureLogin();
