@@ -60,12 +60,22 @@ describe('Database', function() {
          it('receipt indicates failure', () => assert(!receipt.success));
          it("receipt's failReason indicates 'USER_EXISTS'", () => assert(receipt.failReason === slCodes.USER_EXISTS));
       });
+
+      describe("case: illegal credentials provided", function() {
+         let receipt;
+         function callback(e, r) { receipt = r; }
+         const creds = new db.Credentials();
+         db.addUser(creds, callback);
+         it("receipt contains passed username", () => assert(receipt.username === creds.username));
+         it("receipt indicates failure", () => assert(!receipt.success));
+         it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
+      });
    });
 
 
 
 
-   
+
    //check for 'username'/'password'
    describe("#authenticateUser", function() {
       const creds = new db.Credentials({$username: "invalid_username", $password: "invalid_password"});
@@ -115,6 +125,16 @@ describe('Database', function() {
          it('receipt indicates success', () => assert(receipt.success));
          it('receipt failure reason is NONE', () => assert(receipt.failReason === slCodes.NONE));
       });
+
+      describe("case: illegal credentials provided", function() {
+         let receipt;
+         function callback(e, r) { receipt = r; }
+         const creds = new db.Credentials();
+         db.authenticateUser(creds, callback);
+         it("receipt contains passed username", () => assert(receipt.username === creds.username));
+         it("receipt indicates failure", () => assert(!receipt.success));
+         it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
+      });
    });
 
 
@@ -140,6 +160,16 @@ describe('Database', function() {
          it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
          it('receipt indicates failure', () => assert(!receipt.success));
          it('receipt failure is caused by user not existing', () => assert(receipt.failReason === slCodes.USER_DNE));
+      });
+
+      describe("case: illegral credentials provided", function() {
+         let receipt;
+         function callback(e, r) { receipt = r; }
+         const creds = new db.Credentials();
+         db.removeUser(creds, callback);
+         it("receipt contains passed username", () => assert(receipt.username === creds.username));
+         it("receipt indicates failure", () => assert(!receipt.success));
+         it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
       });
    });
 });

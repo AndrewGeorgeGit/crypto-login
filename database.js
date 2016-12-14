@@ -5,6 +5,7 @@ const slCodes = require('./codes');
 
 class Credentials {
 	constructor(raw) {
+		if (!raw) return;
 		this.$oldUsername = raw.$oldUsername;
 		this.$username = raw.$username;
 		this.$password = raw.$password;
@@ -19,7 +20,7 @@ class Credentials {
 	}
 
 	has(member) {
-		return (member in this);
+		return (member in this) && this[member] !== null && this[member] !== undefined; //member exists in object and is defined
 	}
 
 	isDatabaseReady() { //true if all rowFormat columns are present
@@ -106,8 +107,16 @@ class SecureLoginDatabase {
 				return;
 			}
 
-			//not database ready if $password hasn't been hashed
-			if (!credentials.isDatabaseReady()) {
+			//$username and $password are required
+			if (!credentials.has("$username") || !credentials.has("$password")) {
+				const receipt = new DatabaseReceipt(credentials.get("$username"));
+				receipt.setSuccess(false);
+				receipt.setFailReason(slCodes.ILLEGAL_CREDENTIALS);
+				callback(null, receipt);
+				return;
+			}
+
+			if (!credentials.isDatabaseReady()) { //todo: what if no $username or $password?
 				hash(credentials, run);
 				return;
 			}
@@ -123,24 +132,34 @@ class SecureLoginDatabase {
 
 			//executing
 			singleton.db.run(sql, credentials.rowFormat(), err => {
+				if (!callback) return;
 				const receipt = new DatabaseReceipt(credentials.get("$username"));
 				if (!err) {
 					receipt.setSuccess(true);
-					callback(null, receipt);
 				}
 				else if (err.errno === 19) {
 					receipt.setSuccess(false);
 					receipt.setFailReason(slCodes.USER_EXISTS);
-					callback(null, receipt);
 				}
 				else {
 					callback(err);
+					return;
 				}
-			}); //todo: consider returning username
+				callback(null, receipt);
+			});
 		})();
 	}
 
 	authenticateUser(credentials, callback) {
+		//username and password are required to authenticateUser
+		if (!credentials.has("$username") || !credentials.has("$password")) {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
+			receipt.setSuccess(false);
+			receipt.setFailReason(slCodes.ILLEGAL_CREDENTIALS);
+			callback(null, receipt);
+			return;
+		}
+
 		this.db.get(`SELECT * FROM ${singleton.tableName} WHERE username=?`, credentials.get("$username"), (err, row) => {
 			const receipt = new DatabaseReceipt(credentials.get("$username"));
 
@@ -157,6 +176,7 @@ class SecureLoginDatabase {
 			credentials.set("$iterations", row.iterations);
 			credentials.set("$salt", row.salt);
 			hash(credentials, () => {
+				if (!callback) return;
 				if (credentials.get("$hash") === row.hash) {
 					receipt.setSuccess(true);
 					callback(null, receipt);
@@ -170,7 +190,15 @@ class SecureLoginDatabase {
 	}
 
 	removeUser(credentials, callback) {
+		if (!credentials.has("$username")) {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
+			receipt.setSuccess(false);
+			receipt.setFailReason(slCodes.ILLEGAL_CREDENTIALS);
+			callback(null, receipt);
+			return;
+		}
 		this.db.run(`DELETE FROM ${singleton.tableName} WHERE username=?`, credentials.get("$username"), function(err) {
+			if (!callback) return;
 			const receipt = new DatabaseReceipt(credentials.get("$username"));
 
 			if (err) {
