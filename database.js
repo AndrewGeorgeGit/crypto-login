@@ -6,7 +6,7 @@ const slCodes = require('./codes');
 class Credentials {
 	constructor(raw) {
 		if (!raw) return;
-		this.$oldUsername = raw.$oldUsername;
+		this.$newUsername = raw.$newUsername;
 		this.$username = raw.$username;
 		this.$password = raw.$password;
 	}
@@ -114,7 +114,7 @@ class SecureLoginDatabase {
 			if (!credentials.has("$username") || !credentials.has("$password")) {
 				const receipt = new DatabaseReceipt(credentials.get("$username"));
 				receipt.setSuccess(false);
-				receipt.setFailReason(slCodes.ILLEGAL_CREDENTIALS);
+				receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
 				callback(null, receipt);
 				return;
 			}
@@ -140,7 +140,7 @@ class SecureLoginDatabase {
 				if (!err) {
 					receipt.setSuccess(true);
 				}
-				else if (err.errno === 19) {
+				else if (err.errno === sqlite3.CONSTRAINT) {
 					receipt.setSuccess(false);
 					receipt.setFailReason(slCodes.USER_EXISTS);
 				}
@@ -217,11 +217,45 @@ class SecureLoginDatabase {
 		});
 	}
 
-	changeUsername(credentials) {
+	changeUsername(credentials, callback) {
+		if(!credentials.has("$username") || !credentials.has("$newUsername")) {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
+			receipt.setSuccess(false);
+			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.NEW_USERNAME_REQUIRED);
+			callback(null, receipt);
+			return;
+		}
 
+		this.db.run(`UPDATE ${this.tableName} SET username=? WHERE username=?`, [credentials.get("$newUsername"), credentials.get("$username")], function(err) {
+			if (!callback) return;
+
+			let receipt;
+			if (err) {
+				if (err.errno === sqlite3.CONSTRAINT) {
+					receipt = new DatabaseReceipt(credentials.get("$username"));
+					receipt.setSuccess(false);
+					receipt.setFailReason(slCodes.USER_EXISTS);
+					callback(null, receipt);
+					return;
+				} else {
+					callback(err);
+					return;
+				}
+			}
+
+			if (this.changes === 0) {
+				receipt = new DatabaseReceipt(credentials.get("$username"));
+				receipt.setSuccess(false);
+				receipt.setFailReason(slCodes.USER_DNE);
+			} else {
+				receipt = new DatabaseReceipt(credentials.get("$newUsername"));
+				receipt.setSuccess(true);
+			}
+			callback(null, receipt);
+		});
 	}
 
-	changePassword(credentials) {
+	changePassword(credentials, callback) {
 
 	}
 }

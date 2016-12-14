@@ -8,7 +8,7 @@ const slCodes = require('../codes');
 
 
 describe('Database', function() {
-   before(function(done) {
+   before(function(done) { //use in memory database
       db.setProperty(["path"], ":memory:");
       db.start(done);
    });
@@ -61,14 +61,19 @@ describe('Database', function() {
          it("receipt's failReason indicates 'USER_EXISTS'", () => assert(receipt.failReason === slCodes.USER_EXISTS));
       });
 
-      describe("case: illegal credentials provided", function() {
+      describe("case: required credentials missing", function() {
          let receipt;
          function callback(e, r) { receipt = r; }
          const creds = new db.Credentials();
          db.addUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
-         it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
+         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED", () => {
+            creds.set("$username", "username");
+            db.addUser(creds, callback);
+            assert(receipt.failReason === slCodes.PASSWORD_REQUIRED)
+         });
       });
    });
 
@@ -126,20 +131,133 @@ describe('Database', function() {
          it('receipt failure reason is NONE', () => assert(receipt.failReason === slCodes.NONE));
       });
 
-      describe("case: illegal credentials provided", function() {
+      describe("case: required credentials missing", function() {
          let receipt;
          function callback(e, r) { receipt = r; }
          const creds = new db.Credentials();
          db.authenticateUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
-         it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED");
+         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED");
       });
    });
 
 
+
+
+
+   describe("#changePassword", function() {
+      describe("case: valid username", function() {
+         it("no sqlite error thrown");
+         it("receipt contains username");
+         it("receipt indicates success");
+         it("database contains updated password hash");
+      });
+
+      describe("case: invalid username", function() {
+         it("no sqlite error thrown");
+         it("receipt contains username");
+         it("receipt indicates failure");
+         it("receipt failReason is set to USER_DNE");
+      });
+
+      describe("case: required credentials missing", function() {
+         it("receipt contains passed username");
+         it("receipt indicates failure");
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED");
+         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED");
+      });
+   });
+
+
+
+
+
+   describe("#changeUsername", function() {
+      let err, receipt;
+      describe("case: new user does not exist", function() {
+         const creds = new db.Credentials({$username: 'username', $newUsername: 'andrew'})
+         before(function(done) {
+            db.changeUsername(creds, (e,r) => { err = e; receipt = r; done(); });
+         });
+
+         it("no sqlite error thrown", function() { if(err) throw err; });
+         it("receipt contains new username", function(){ assert(receipt.username === creds.get("$newUsername")); });
+         it("receipt indicates success", function(){ assert(receipt.success); });
+         it("receipt failReason is set to NONE", function(){ assert(receipt.failReason === slCodes.NONE); });
+         it("new user appears in database", function(done) {
+            db.db.get(`SELECT * FROM ${db.tableName} WHERE username=?`, creds.get("$newUsername"), (err, row) => {
+               assert(row.username === creds.get("$newUsername"));
+               done(err);
+            });
+         });
+         it("old user does not appear in database", function(done) {
+            db.db.get(`SELECT * FROM ${db.tableName} WHERE username=?`, creds.get("$username"), (err, row) => {
+               assert(!row);
+               done(err);
+            });
+         });
+      });
+
+      describe("case: new user exists", function() {
+         const creds = new db.Credentials({$username: 'andrew', $newUsername: 'george'})
+
+         before(function(done) { //adding dummy user
+            db.db.run(`INSERT INTO ${db.tableName}(username) VALUES('george')`, [], err => done(err));
+         });
+
+         let err, receipt;
+         before(function(done) { //actual test begins
+            db.changeUsername(creds, (e, r) => { err = e; receipt = r; done(); });
+         });
+
+         it("no sqlite error thrown", function(){ if(err) throw err; });
+         it("receipt contains old username", function() { assert.deepEqual(receipt.username, creds.get("$username")) });
+         it("receipt indicates failure", function(){ assert(!receipt.success) });
+         it("receipt failReason is set to USER_EXISTS", function(){ assert(receipt.failReason === slCodes.USER_EXISTS) });
+         it("old user still appears in database", function(done) {
+            db.db.get(`SELECT * FROM ${db.tableName} WHERE username=?`, creds.get("$username"), (err, row) => {
+               assert(row.username === creds.get("$username"));
+               done(err);
+            });
+         });
+      });
+
+      describe("case: old user does not exist", function() {
+         const creds = new db.Credentials({$username: "username", $newUsername: "andy"});
+         let err, receipt;
+         before(function(done) {
+            db.changeUsername(creds, (e,r) => { err = e; receipt = r; done(); });
+         });
+         it("no sqlite error thrown", function(){ assert.ifError(err); });
+         it("receipt contains old username", function(){ assert.deepEqual(receipt.username, creds.get("$username")) });
+         it("receipt indicates failure", function(){ assert(!receipt.success) });
+         it("receipt failReason is set to USER_DNE", function(){ assert.deepEqual(receipt.failReason, slCodes.USER_DNE) });
+      });
+
+      describe("case: required credentials missing", function() {
+         const creds = new db.Credentials();
+         let receipt;
+         function callback(e, r) { receipt = r; }
+         db.changeUsername(creds, callback);
+         it("receipt contains old username", function(){ assert.deepEqual(receipt.username, creds.get("$username")) });
+         it("receipt indicates failure", function(){ assert(!receipt.success) });
+         it("(missing username) receipt's fail reason indicates USERNAME_REQUIRED", function(){ assert.deepEqual(receipt.failReason, slCodes.USERNAME_REQUIRED) });
+         it("(missing newUsername) receipt's failure reason indicates NEW_USERNAME_REQUIRED", function() {
+            creds.set("$username", 'andrew');
+            db.changeUsername(creds, callback);
+            assert.deepEqual(receipt.failReason, slCodes.NEW_USERNAME_REQUIRED);
+         });
+      });
+   });
+
+
+
+
+
    describe("#removeUser", function() {
-      const creds = new db.Credentials({$username: "username"});
+      const creds = new db.Credentials({$username: "andrew"});
       describe("case: user exists", function() {
          let err, receipt;
          before(function(done) {
@@ -149,6 +267,7 @@ describe('Database', function() {
          it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
          it('receipt indicates success', () => assert(receipt.success));
          it('receipt failure reason is NONE', () => assert(receipt.failReason === slCodes.NONE));
+         it("user does not exist in database");
       });
 
       describe("case: user does not exist", function() {
@@ -162,14 +281,14 @@ describe('Database', function() {
          it('receipt failure is caused by user not existing', () => assert(receipt.failReason === slCodes.USER_DNE));
       });
 
-      describe("case: illegral credentials provided", function() {
+      describe("case: required credentials missing", function() {
          let receipt;
          function callback(e, r) { receipt = r; }
          const creds = new db.Credentials();
          db.removeUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
-         it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED");
       });
    });
 
