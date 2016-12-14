@@ -172,4 +172,29 @@ describe('Database', function() {
          it("receipt's failReason indicates credentials are invalid", () => assert(receipt.failReason === slCodes.ILLEGAL_CREDENTIALS));
       });
    });
+
+   describe("#setProperty", function() {
+      const defaultPath = db.settings.path;
+
+      //expected behavior
+      it("hash: successfully forwards", () => {
+         db.setProperty(["hash", "iterations"], 10);
+      });
+      it("path: changes value", () => {
+         db.setProperty(["path"], "new_path");
+         assert(db.settings.path !== defaultPath);
+      });
+
+      //what could go wrong
+      it("path: throws when passed non-string value", () => {
+         try { db.setProperty(["path"], 123); }
+         catch(err) { return; }
+         throw Error();
+      });
+      it("throws if property does not exist", () => {
+         try { db.setProperty(["nonproperty"], "hello_world"); }
+         catch(err) { return; }
+         throw Error();
+      });
+   });
 });

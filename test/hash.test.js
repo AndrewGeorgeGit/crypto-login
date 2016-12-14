@@ -19,7 +19,7 @@ describe("hash.js", function() {
    });
 
    describe("#setProperty", function() {
-      const defaultIterations = hash.settings.iterations, defaultLength = hash.settings.iterations;
+      const defaultIterations = hash.settings.iterations, defaultLength = hash.settings.length;
 
       //expected behavior
       const iter = ["iterations"], len = ["length"]
@@ -64,7 +64,7 @@ describe("hash.js", function() {
          throw Error();
       });
       it("throws if property does not exist", () => {
-         try { hash.setProperty("nonproperty", 2); }
+         try { hash.setProperty(["nonproperty"], 2); }
          catch(err) { return; }
          throw Error();
       });

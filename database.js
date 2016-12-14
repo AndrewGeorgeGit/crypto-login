@@ -77,6 +77,9 @@ class SecureLoginDatabase {
 				if (typeof value !== "string") throw new TypeError('sl.db.setProperty: desired sl.db."' + property[0] +'" value is not of required type string.');
 				this.settings[property[0]] = value;
 				break;
+			case 'hash':
+	         hash.setProperty(property.slice(1), value);
+	         break;
 			default:
 				throw new ReferenceError('sl.db.setProperty: "' + property[0] + '" is not a sl.db property. You cannot set its value.');
 				break;
