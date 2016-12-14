@@ -158,7 +158,7 @@ class SecureLoginDatabase {
 		if (!credentials.has("$username") || !credentials.has("$password")) {
 			const receipt = new DatabaseReceipt(credentials.get("$username"));
 			receipt.setSuccess(false);
-			receipt.setFailReason(slCodes.ILLEGAL_CREDENTIALS);
+			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
 			callback(null, receipt);
 			return;
 		}
@@ -196,7 +196,7 @@ class SecureLoginDatabase {
 		if (!credentials.has("$username")) {
 			const receipt = new DatabaseReceipt(credentials.get("$username"));
 			receipt.setSuccess(false);
-			receipt.setFailReason(slCodes.ILLEGAL_CREDENTIALS);
+			receipt.setFailReason(slCodes.USERNAME_REQUIRED);
 			callback(null, receipt);
 			return;
 		}

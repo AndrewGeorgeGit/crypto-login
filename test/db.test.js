@@ -138,8 +138,12 @@ describe('Database', function() {
          db.authenticateUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
-         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED");
-         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED");
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
+         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED", () => {
+            creds.set("$username", "username");
+            db.authenticateUser(creds, callback);
+            assert(receipt.failReason === slCodes.PASSWORD_REQUIRED);
+         });
       });
    });
 
@@ -296,7 +300,12 @@ describe('Database', function() {
          it('receipt contains passed username', () => assert(creds.get("$username") === receipt.username));
          it('receipt indicates success', () => assert(receipt.success));
          it('receipt failure reason is NONE', () => assert(receipt.failReason === slCodes.NONE));
-         it("user does not exist in database");
+         it("user does not exist in database", done => {
+            db.db.get(`SELECT * FROM ${db.tableName} WHERE username=?`, creds.get("$username"), (err, row) => {
+               assert(!row);
+               done();
+            });
+         });
       });
 
       describe("case: user does not exist", function() {
@@ -317,7 +326,7 @@ describe('Database', function() {
          db.removeUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
-         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED");
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
       });
    });
 
