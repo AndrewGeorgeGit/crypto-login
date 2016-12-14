@@ -149,24 +149,53 @@ describe('Database', function() {
 
    describe("#changePassword", function() {
       describe("case: valid username", function() {
-         it("no sqlite error thrown");
-         it("receipt contains username");
-         it("receipt indicates success");
-         it("database contains updated password hash");
+         const creds = new db.Credentials({$username: "username", $password: "newpassword"});
+         let err, receipt;
+         before(function(done) {
+            db.changePassword(creds, (e,r) => { err = e; receipt = r; done(); });
+         });
+         it("no sqlite error thrown", () => assert.ifError(err));
+         it("receipt contains username", () => assert(receipt.username === creds.get("$username")));
+         it("receipt indicates success", () => assert(receipt.success));
+         it("receipt's failReason is set to NONE", () => assert(receipt.failReason === slCodes.NONE));
+         it("database contains updated password hash", done => {
+            db.db.get(`SELECT * FROM ${db.tableName} WHERE username=?`, creds.get("$username"), (err, row) => {
+               assert(row, "row found");
+               assert(row.iterations === creds.get("$iterations"), "iterations equality");
+               assert(row.salt === creds.get("$salt"), "salt equality");
+               assert(row.hash === creds.get("$hash"), "hash equality");
+               done();
+            });
+         });
       });
 
       describe("case: invalid username", function() {
-         it("no sqlite error thrown");
-         it("receipt contains username");
-         it("receipt indicates failure");
-         it("receipt failReason is set to USER_DNE");
+         const creds = new db.Credentials({$username: "invalid_username", $password: "newpassword"});
+         let err, receipt;
+         before(function(done) {
+            db.changePassword(creds, (e,r) => { err = e; receipt = r; done(); });
+         });
+
+         it("no sqlite error thrown", () => assert.ifError(err));
+         it("receipt contains username", () => assert(receipt.username === creds.get("$username")));
+         it("receipt indicates failure", () => assert(!receipt.success));
+         it("receipt failReason is set to USER_DNE", () => assert(receipt.failReason === slCodes.USER_DNE));
       });
 
       describe("case: required credentials missing", function() {
-         it("receipt contains passed username");
-         it("receipt indicates failure");
-         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED");
-         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED");
+         const creds = new db.Credentials();
+         let receipt;
+         function callback(e, r) { receipt = r; }
+
+         db.changePassword(creds, callback);
+         it("receipt contains passed username", () => assert(receipt.username === creds.get("$username")));
+         it("receipt indicates failure", () => assert(!receipt.success));
+         it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
+         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED", () => {
+            creds.set("$username", "username");
+            db.changePassword(creds, callback);
+            assert(receipt.failReason === slCodes.PASSWORD_REQUIRED);
+         });
       });
    });
 

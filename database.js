@@ -103,19 +103,19 @@ class SecureLoginDatabase {
 	}
 
 	addUser(credentials, callback) {
+		//$username and $password are required
+		if (!credentials.has("$username") || !credentials.has("$password")) {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
+			receipt.setSuccess(false);
+			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
+			callback(null, receipt);
+			return;
+		}
+
 		//what is defined behavior for faliure to hash?
 		(function run(err) {
 			if (err) {
 				callback(new Error("sl.db.addUser: failed to hash password. This is a most likely a problem with the crypto module."));
-				return;
-			}
-
-			//$username and $password are required
-			if (!credentials.has("$username") || !credentials.has("$password")) {
-				const receipt = new DatabaseReceipt(credentials.get("$username"));
-				receipt.setSuccess(false);
-				receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
-				callback(null, receipt);
 				return;
 			}
 
@@ -256,7 +256,41 @@ class SecureLoginDatabase {
 	}
 
 	changePassword(credentials, callback) {
+		if(!credentials.has("$username") || !credentials.has("$password")) {
+			const receipt = new DatabaseReceipt(credentials.get("$username"));
+			receipt.setSuccess(false);
+			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
+			callback(null, receipt);
+			return;
+		}
 
+		(function run(err) {
+			if (err) {
+				callback(new Error("sl.db.addUser: failed to hash password. This is a most likely a problem with the crypto module."));
+				return;
+			}
+
+			if(!credentials.isDatabaseReady()) {
+				hash(credentials, run);
+				return;
+			}
+
+			const sql = `UPDATE ${singleton.tableName}\
+				SET iterations=$iterations, salt=$salt, hash=$hash\
+				WHERE username=$username`;
+			singleton.db.run(sql, credentials.rowFormat(), function(err) {
+				if (!callback) return;
+				if (err) { callback(err); return; }
+				const receipt = new DatabaseReceipt(credentials.get("$username"));
+				if (this.changes === 0) {
+					receipt.setSuccess(false);
+					receipt.setFailReason(slCodes.USER_DNE);
+				} else {
+					receipt.setSuccess(true);
+				}
+				callback(null, receipt);
+			});
+		})();
 	}
 }
 
