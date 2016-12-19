@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3');
 const hash = require('./hash');
 const slCodes = require('./codes');
+const DatabaseReceipt = require('./receipt');
 
 
 class Credentials {
@@ -34,20 +35,6 @@ class Credentials {
 			$salt: this.$salt,
 			$hash: this.$hash
 		};
-	}
-}
-class DatabaseReceipt {
-	constructor(username) {
-		this.username = username;
-		this.failReason = slCodes.NONE;
-	}
-
-	setSuccess(success) {
-		this.success = success;
-	}
-
-	setFailReason(failReason) {
-		this.failReason = failReason;
 	}
 }
 
