@@ -1,0 +1,54 @@
+const DatabaseReceipt = require('./receipt');
+const slCodes = require('./codes');
+
+class Endpoint {
+	constructor() {
+		this.functions = {
+			'start': null,
+			'react': function(receipt, req, res, next) { next(receipt, req, res, next); },
+			'redirect': function(receipt, req, res, next) {
+				if (!this.redirects) { next(); return; } //do nothing if redirects have not been defined
+				res.statusCode = 303;
+				res.setHeader("Location", this.redirects[receipt.success ? "success" : "failure"]);
+				res.end();
+				next();
+			}
+		};
+		this.redirects = null; //takes an object with 'success' and 'failure' members
+	}
+
+	setFunction(funcName, func) {
+		switch(funcName) {
+			case "start":
+			case "react":
+				if (typeof func !== "function") throw new TypeError("sl.Endpoint.setFunction: provided value is not of required type function.");
+				this.functions[funcName] = func; //any other function restraints?
+				break;
+			case "redirect":
+				throw new Error(`sl.Endpoint.setFunction: overloading the redirect function is not allowed`);
+				break;
+			default:
+				throw new Error(`sl.Endpoint.setFunction: ${funcName} does not exists`);
+				break;
+		}
+		return this;
+	}
+
+	setRedirect(redirects) {
+		if (typeof redirects.success !== "string" || typeof redirects.failure !== "string") {
+			throw new Error("sl.endpoint.setRedirect: both success and failure must be string values.");
+			return;
+		}
+		this.redirects = redirects;
+	}
+
+	run(credentials, req, res, next) {
+		this.functions.start(credentials, (err, receipt) => {
+			this.functions.react(receipt, req, res, () => {
+				this.functions.redirect(receipt, req, res, next);
+			});
+		});
+	}
+}
+
+module.exports = Endpoint;
