@@ -8,6 +8,7 @@ class Credentials {
 	constructor(raw) {
 		if (!raw) return;
 		this.$newUsername = raw.$newUsername;
+		this.$newPassword = raw.$newPassword;
 		this.$username = raw.$username;
 		this.$password = raw.$password;
 	}
@@ -35,6 +36,15 @@ class Credentials {
 			$salt: this.$salt,
 			$hash: this.$hash
 		};
+	}
+
+	static copy(oldCredentials) {
+		let newCredentials = new Credentials();
+		newCredentials.set("$username", oldCredentials.get("$username"));
+		newCredentials.set("$password", oldCredentials.get("$password"));
+		newCredentials.set("$newUsername", oldCredentials.get("$newUsername"));
+		newCredentials.set("$newPassword", oldCredentials.get("$newPassword"));
+		return newCredentials;
 	}
 }
 
@@ -278,6 +288,28 @@ class SecureLoginDatabase {
 				callback(null, receipt);
 			});
 		})();
+	}
+
+	changeUsernameAuth(credentials, callback) {
+		this.authenticateUser(credentials, (err, receipt) => {
+			if (err) { callback(err); return; }
+			else if (!receipt.success) { callback(err, receipt); return; }
+			//todo: copy credentials object
+		});
+	}
+
+	changePasswordAuth(credentials, callback) {
+		this.authenticateUser(credentials, (err, receipt) => {
+			if (err) { callback(err); return; }
+			else if (!receipt.success) { callback(err, receipt); return; }
+		});
+	}
+
+	removeUserAuth(credentials, callback) {
+		this.authenticateUser(credentials, (err, receipt) => {
+			if (err) { callback(err); return; }
+			else if (!receipt.success) { callback(err, receipt); return; }
+		});
 	}
 }
 
