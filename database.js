@@ -253,13 +253,15 @@ class SecureLoginDatabase {
 	}
 
 	changePassword(credentials, callback) {
-		if(!credentials.has("$username") || !credentials.has("$password")) {
+		if(!credentials.has("$username") || !credentials.has("$newPassword")) {
 			const receipt = new DatabaseReceipt(credentials.get("$username"));
 			receipt.setSuccess(false);
 			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
 			callback(null, receipt);
 			return;
 		}
+
+		credentials.set("$password", credentials.get("$newPassword")); //need to swap to work with hashing algorithm
 
 		(function run(err) {
 			if (err) {
@@ -291,24 +293,29 @@ class SecureLoginDatabase {
 	}
 
 	changeUsernameAuth(credentials, callback) {
+		const credentialsCopy = Credentials.copy(credentials);
 		this.authenticateUser(credentials, (err, receipt) => {
 			if (err) { callback(err); return; }
 			else if (!receipt.success) { callback(err, receipt); return; }
-			//todo: copy credentials object
+			this.changeUsername(credentialsCopy, callback);
 		});
 	}
 
 	changePasswordAuth(credentials, callback) {
+		const credentialsCopy = Credentials.copy(credentials);
 		this.authenticateUser(credentials, (err, receipt) => {
 			if (err) { callback(err); return; }
 			else if (!receipt.success) { callback(err, receipt); return; }
+			this.changePassword(credentialsCopy, callback);
 		});
 	}
 
 	removeUserAuth(credentials, callback) {
+		const credentialsCopy = Credentials.copy(credentials);
 		this.authenticateUser(credentials, (err, receipt) => {
 			if (err) { callback(err); return; }
 			else if (!receipt.success) { callback(err, receipt); return; }
+			this.removeUser(credentialsCopy, callback);
 		});
 	}
 }
