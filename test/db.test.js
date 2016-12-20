@@ -153,7 +153,7 @@ describe('Database', function() {
 
    describe("#changePassword", function() {
       describe("case: valid username", function() {
-         const creds = new db.Credentials({$username: "username", $password: "newpassword"});
+         const creds = new db.Credentials({$username: "username", $newPassword: "newpassword"});
          let err, receipt;
          before(function(done) {
             db.changePassword(creds, (e,r) => { err = e; receipt = r; done(); });
@@ -174,7 +174,7 @@ describe('Database', function() {
       });
 
       describe("case: invalid username", function() {
-         const creds = new db.Credentials({$username: "invalid_username", $password: "newpassword"});
+         const creds = new db.Credentials({$username: "invalid_username", $newPassword: "newpassword"});
          let err, receipt;
          before(function(done) {
             db.changePassword(creds, (e,r) => { err = e; receipt = r; done(); });
@@ -195,7 +195,7 @@ describe('Database', function() {
          it("receipt contains passed username", () => assert(receipt.username === creds.get("$username")));
          it("receipt indicates failure", () => assert(!receipt.success));
          it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
-         it("(missing password) receipt's failReason is set to PASSWORD_REQUIRED", () => {
+         it("(missing newPassword) receipt's failReason is set to PASSWORD_REQUIRED", () => {
             creds.set("$username", "username");
             db.changePassword(creds, callback);
             assert(receipt.failReason === slCodes.PASSWORD_REQUIRED);
@@ -328,6 +328,32 @@ describe('Database', function() {
          it("receipt indicates failure", () => assert(!receipt.success));
          it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
       });
+   });
+
+   describe("#changeUsernameAuth", function() {
+
+   });
+
+   describe("#changePasswordAuth", function() {
+      describe("case: invalid username", function() {
+
+      });
+
+      describe("case: valid username, invalid password", function() {
+
+      });
+
+      describe("case: valid username, valid password", function() {
+
+      });
+
+      describe("case: required credentials missing", function() {
+
+      });
+   });
+
+   describe("#removeUserAuth", function() {
+
    });
 
    describe("#setProperty", function() {
