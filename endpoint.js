@@ -1,11 +1,15 @@
 const DatabaseReceipt = require('./receipt');
 const slCodes = require('./codes');
 
+function defaultReactFunction(receipt, req, res, next) {
+	next();
+}
+
 class Endpoint {
 	constructor() {
 		this.functions = {
 			'start': null,
-			'react': function(receipt, req, res, next) { next(receipt, req, res, next); },
+			'react': defaultReactFunction,
 			'redirect': function(receipt, req, res, next) {
 				if (!this.redirects) { next(); return; } //do nothing if redirects have not been defined
 				res.statusCode = 303;
@@ -52,3 +56,4 @@ class Endpoint {
 }
 
 module.exports = Endpoint;
+exports.defaultReactFunction = defaultReactFunction;
