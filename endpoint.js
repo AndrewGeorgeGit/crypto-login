@@ -24,9 +24,12 @@ class Endpoint {
 	setFunction(funcName, func) {
 		switch(funcName) {
 			case "start":
-			case "react":
 				if (typeof func !== "function") throw new TypeError("sl.Endpoint.setFunction: provided value is not of required type function.");
 				this.functions[funcName] = func; //any other function restraints?
+				break;
+			case "react":
+				if (func && typeof func !== "function") throw new TypeError("sl.Endpoint.setFunction: provided value is not of required type function.");
+				this.functions[funcName] = func ? func : defaultReactFunction;
 				break;
 			case "redirect":
 				throw new Error(`sl.Endpoint.setFunction: overloading the redirect function is not allowed`);
@@ -39,7 +42,7 @@ class Endpoint {
 	}
 
 	setRedirect(redirects) {
-		if (typeof redirects.success !== "string" || typeof redirects.failure !== "string") {
+		if (redirects && (typeof redirects.success !== "string" || typeof redirects.failure !== "string")) {
 			throw new Error("sl.endpoint.setRedirect: both success and failure must be string values.");
 			return;
 		}
@@ -55,5 +58,5 @@ class Endpoint {
 	}
 }
 
-module.exports = Endpoint;
+exports = module.exports = Endpoint;
 exports.defaultReactFunction = defaultReactFunction;

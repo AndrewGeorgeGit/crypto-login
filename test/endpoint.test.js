@@ -9,36 +9,67 @@ const Response = require("http").ServerResponse;
 
 describe("Endpoint", function() {
    describe("#setFunction", function() {
-      const ep = new Endpoint();
+      //clean Endpoint for each test
+      let ep;
+      beforeEach(function() {
+         ep = new Endpoint();
+      });
+
       it("throws if function does not exist", () => {
          try { ep.setFunction("does_not_exist", () => {}); }
          catch(err) { return; }
          throw Error();
       });
+
       it("redirect: throws", () => {
          try { ep.setFunction("redirect", () => {}); }
          catch(err) { return; }
          throw Error();
       });
-      it("start/react: throws if non-function value is not provided", () => {
+
+      it("start: throws if non-function value is not provided", () => {
          try { ep.setFunction("start", 22); }
          catch(err) { return; }
          throw Error();
       });
+
+      it("react: throws if non-function, non-null value is provided", () => {
+         try { ep.setFunction("react", 22); }
+         catch(err) { return; }
+         throw Error();
+      });
+
+      it("react: if falsey, changes to defaultReactFunction", () => {
+         ep.functions.react = () => {};
+         ep.setFunction("react", null);
+         assert(ep.functions.react === Endpoint.defaultReactFunction);
+      });
+
       it("start: changes value", () => {
          const original = ep.functions.start, func = () => {};
          ep.setFunction("start", func);
          assert(ep.functions.start !== original, "#start is no longer its original value");
          assert(ep.functions.start === func, "#start was set to the passed value");
       });
+
       it("react: changes value", () => {
-         const original = ep.functions.react;
+         const original = ep.functions.react, func = () => {};
+         ep.setFunction("react", func);
+         assert(ep.functions.react !== original, "#react is no longer its original value");
+         assert(ep.functions.react === func, "#react was set to the passed value");
       });
    });
 
    describe("#setRedirect", function() {
       const ep = new Endpoint();
 
+      it("set to null if passed null", () => {
+         const original = {success: "s", failure: "f"};
+         ep.redirects = original;
+         ep.setRedirect(null);
+         assert(ep.redirects !== original, "not equal to old redirects");
+         assert(ep.redirects === null, "set to null");
+      })
       const redirects = {success: null, failure: ""}
       it("success: throws if not string", () => ep.setRedirect(redirects));
 
