@@ -64,11 +64,18 @@ class SecureLoginApi {
    }
 
    router(req, res, next) {
-      //todo: skip if not in use
-      //todo: determine if secure-login was requested, and if so, what endpoint to use
-      //todo: read incoming data, create credentials object, and call run
+      if (!this.settings.use) { next(); return; }
+
+      const url = require("path").parse(req.url), endpoint = url.base;
+      if (url.dir !== this.settings.namespace) { next(); return; }
+      else if (!(endpoint in this.endpoints)) { next(); return; }
+
+      let data = "";
+      req.on("data", d => data += d)
+         .on("end", () => {
+            this.endpoints[endpoint].run(require("querystring").parse(data), req, res, next);
+         });
    }
 }
 
-const singleton = new SecureLoginApi();
-module.exports = singleton;
+module.exports = SecureLoginApi;

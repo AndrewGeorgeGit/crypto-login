@@ -2,10 +2,11 @@ const mocha = require("mocha");
 const sinon = require("sinon");
 const assert = require("assert");
 const SecureLoginEndpoint = require("../endpoint.js");
+const SecureLoginApi = require("../api");
 
 describe("API", function() {
    describe("#setProperty", function() {
-      const api = require("../api.js");
+      const api = new SecureLoginApi();
       it("changes value if valid property and value provided", () => {
          const previousValue = api.settings.namespace;
          api.setProperty(["namespace"], "test");
@@ -40,7 +41,7 @@ describe("API", function() {
       //constructing testable SecureLoginApi object for each test
       let api;
       beforeEach(function() {
-         api = require("../api.js");
+         api = new SecureLoginApi();
          api.endpoints = {
             "test-endpoint": new SecureLoginEndpoint()
          };
@@ -113,45 +114,90 @@ describe("API", function() {
 
    describe("#router", function() {
       //constructing testable SecureLoginApi object
-      const api = require("../api.js");
+      const api = new SecureLoginApi();
       api.endpoints = {
          "test-endpoint": {
-            run: (_1, _2, _3, next) => next()
+            run: function(credentials, req, res, next) { next(); }
          }
       };
+      api.settings.namespace = "ns";
 
-      //
+      //spies and stubs
+      let req, onSpy;
+      const requestBody = "hello=world";
       const nextSpy = sinon.spy();
-      const runSpy = sinon.spy(api.endpoints["test-endpoint"].run);
+      const runSpy = sinon.spy(api.endpoints["test-endpoint"], "run");
+      const resStub = sinon.stub();
+
 
       beforeEach(function() {
          api.settings.use = true;
-         nextSpy.reset();
-         runSpy.reset();
+         req = new require("stream").PassThrough();
+         onSpy = sinon.spy(req, "on");
+         req.end(requestBody);
       });
 
-      describe("case: use false or invalid endpoint", function() {
-         api.settings.use = false;
-         api.router(null, null, null, nextSpy);
+      afterEach(function() {
+         req.on.restore();
+         runSpy.reset();
+         nextSpy.reset();
+         resStub.reset();
+      })
+
+      describe("case: api.settings.use is false", function() {
+         beforeEach(() => {
+            api.settings.use = false;
+            api.router(req, resStub, nextSpy);
+         });
          it("next is called once", () => assert(nextSpy.calledOnce));
-         it("run is not called", () => assert(runSpy.callCount === 0));
+         it("req.on ins not called", () => assert(onSpy.notCalled));
+         it("run is not called", () => assert(runSpy.notCalled));
       });
 
       describe("case: incorrect namespace", function() {
+         beforeEach(() => {
+            req.url = "notns/test-endpoint";
+            api.router(req, resStub, nextSpy);
+         });
          it("next is called once", () => assert(nextSpy.calledOnce));
-         it("run is not called", () => assert(runSpy.callCount === 0));
+         it("req.on is not called", () => assert(onSpy.notCalled));
+         it("run is not called", () => assert(runSpy.notCalled));
       });
 
       describe("case: invalid endpoint", function() {
+         beforeEach(() => {
+            req.url = "ns/not-test-endpoint";
+            api.router(req, resStub, nextSpy);
+         });
          it("next is called once", () => assert(nextSpy.calledOnce));
-         it("run is not called", () => assert(runSpy.callCount === 0));
+         it("req.on is not called", () => assert(onSpy.notCalled));
+         it("run is not called", () => assert(runSpy.notCalled));
       });
 
       describe("case: valid endpoint", function() {
-         it("run is called first");
-         it("next is called second");
-         it("run is called once");
-         it("next is called once");
+         beforeEach(() => {
+            req.url = "ns/test-endpoint";
+            api.router(req, resStub, nextSpy);
+         });
+         it("run is called after req.on", done => {
+            setTimeout(() => { assert(runSpy.calledAfter(onSpy)); done(); }, 100);
+         });
+
+         it("run is called with correct arguments", done => {
+            setTimeout(() => { assert(runSpy.calledWithExactly(require("querystring").parse(requestBody), req, resStub, nextSpy)); done(); }, 100);
+         });
+
+         it("next is called after run", done => {
+            setTimeout(() => {assert(nextSpy.calledAfter(runSpy)); done();}, 100);
+         });
+
+         it("run is called once", done => {
+            setTimeout(() => {assert(runSpy.calledOnce); done();}, 100);
+         });
+
+         it("next is called once", done => {
+            setTimeout(() => {assert(nextSpy.calledOnce); done();}, 100);
+         });
       });
    });
 });
