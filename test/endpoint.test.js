@@ -131,7 +131,8 @@ describe("Endpoint", function() {
 
          const runSpy = sinon.spy(ep, "run"),
             startSpy = sinon.spy(ep.functions, "start"),
-            reactSpy = sinon.spy(ep.functions, "react");
+            _reactSpy = sinon.spy(ep.functions, "_react");
+            reactSpy = sinon.spy(ep.functions, "react"),
             redirectSpy = sinon.spy(ep.functions, "redirect"),
             nextSpy = sinon.spy();
 
@@ -141,14 +142,17 @@ describe("Endpoint", function() {
 
          ep.run(credentials, request, response, nextSpy);
          it("#start (called second)", () => assert(startSpy.calledAfter(runSpy)));
-         it("#react (called third)", () => assert(reactSpy.calledAfter(startSpy)));
-         it("#redirect (called fourth)", () => assert(redirectSpy.calledAfter(reactSpy)));
-         it("#next (called fifth)", () => assert(nextSpy.calledAfter(redirectSpy)));
+         it("#_react (called third)", () => assert(_reactSpy.calledAfter(startSpy)))
+         it("#react (called fourth)", () => assert(reactSpy.calledAfter(_reactSpy)));
+         it("#redirect (called fifth)", () => assert(redirectSpy.calledAfter(reactSpy)));
+         it("#next (called sixths)", () => assert(nextSpy.calledAfter(redirectSpy)));
          it("#start arguments", () => assert(startSpy.calledWith(credentials)));
+         it("#_react arguments", () => assert(_reactSpy.calledWith(receipt, request, response)));
          it("#react arguments", () => assert(reactSpy.calledWith(receipt, request, response)));
          it("#redirect arguments", () => assert(redirectSpy.calledWith(receipt, request, response)));
          it("#run called once", ()=>assert(runSpy.calledOnce));
          it("#start called once", () => assert(startSpy.calledOnce));
+         it("#_react called once", () => assert(_reactSpy.calledOnce));
          it("#react called once", () => assert(reactSpy.calledOnce));
          it("#redirect called once", () => assert(redirectSpy.calledOnce));
          it("#next called once", () => assert(nextSpy.calledOnce));

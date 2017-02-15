@@ -9,6 +9,7 @@ class Endpoint {
 	constructor() {
 		this.functions = {
 			'start': null,
+			'_react': defaultReactFunction, //internal react function
 			'react': defaultReactFunction,
 			'redirect': function(receipt, req, res, next) {
 				if (!this.redirects) { next(); return; } //do nothing if redirects have not been defined
@@ -51,8 +52,10 @@ class Endpoint {
 
 	run(credentials, req, res, next) {
 		this.functions.start(credentials, (err, receipt) => {
-			this.functions.react(receipt, req, res, () => {
-				this.functions.redirect(receipt, req, res, next);
+			this.functions._react(receipt, req, res, () => {
+				this.functions.react(receipt, req, res, () => {
+					this.functions.redirect(receipt, req, res, next);
+				});
 			});
 		});
 	}
