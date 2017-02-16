@@ -1,44 +1,35 @@
-const crypto = require('crypto');
-const SecureLoginApi =require("./secure-login-api.js");
+const SecureLoginApi = require("./api.js");
+const SecureLoginSessionManager = require("./session.js");
+const SecureLoginDatabase = require("./database.js")
+const slCodes = require("./codes.js");
+
+
+
+
 
 class SecureLogin {
 	constructor() {
-		this.bStarted = false;
-		this.settings = {
-			express: false,
-			"iterations": 20000, //todo: make setting property
-			"hash length": 64	//todo: make setting property
-		}
-
-		this.db = require("./database");
-		this.sessionManager = require('./secure-login-session.js');
-		this.api = new SecureLoginApi({
-			'add-user': this.bundleApiFunctions(this.addUser.bind(this)),
-			'remove-user': this.bundleApiFunctions(this.removeUser.bind(this), this.sessionManager.unauthenticate),
-			'change-username': this.bundleApiFunctions(this.changeUsername.bind(this)),
-			'change-password': this.bundleApiFunctions(this.changePassword.bind(this)),
-			'login': this.bundleApiFunctions(this.authenticate.bind(this), this.sessionManager.authenticate)
-		});
+		this.stage = "off";
+		this.db = SecureLoginDatabase;
+		this.sessionManager = new SecureLoginSessionManager();
+		this.api = new SecureLoginApi();
 	}
 
 
 
 
 
-	bundleApiFunctions(db, session) {
-		let sessionFunction = () => Promise.resolve();
-		if (session) { //todo: disable this function on the session end
-			session.bind(this.sessionManager);
-			sessionFunction = (success, req, res) => { //todo: change result to success
-				let s = session.bind(this.sessionManager);
-				return (success ? s(req, res) : Promise.resolve());
-			}
+	run(req, res, next) {
+		if (this.stage !== "on") { //DB not open. sl is not guaranteed to work.
+			const err = new Error("sl: not started yet.");
+			err.errno = this.stage == slCodes[this.stage === "starting" ? "STILL_STARTING" : "NOT_STARTED" ];
+			next(err);
+			return;
 		}
 
-		return {
-			startFunc: db,
-			sessionFunc: sessionFunction
-		};
+		this.sessionManager.run(req, res, () => {
+			this.api.router(req, res, next);
+		})
 	}
 
 
@@ -46,8 +37,11 @@ class SecureLogin {
 
 
 	start() {
-		this.bStarted = true;
-		this.db.start();
+		if (this.stage !== "off") return;
+		this.stage = "starting";
+		this.db.start(() => {
+			this.stage = "on";
+		});
 		return this;
 	}
 
@@ -55,17 +49,16 @@ class SecureLogin {
 
 
 
-	//todo: disable value setting after s-l has started
+
 	set(property, value) { //set various properties of sl components,
-		if (this.bStarted) throw new Error('sl.set: you cannot call sl.set() once sl has been started.');
-		if (typeof property !== "string") throw new TypeError('sl.set: property is not a string.');
+		if (this.stage !== "off") throw new Error('sl.set: you cannot call sl.set() once sl has been started.');
+		if (typeof property !== "string") throw new TypeError('sl.set: provided property is not of type string.');
 
 		const componentSetPropertyFuncs = {
-			sl: this.setProperty.bind(this), //todo: why do I have to bind?
 			api: this.api.setProperty.bind(this.api),
-			db: this.db.setProperty.bind(this.db), //todo: finish here
+			db: this.db.setProperty.bind(this.db),
 			sessions: this.sessionManager.setProperty.bind(this.sessionManager),
-			hash: this.db.setProperty.bind(this.db);
+			hash: this.db.setProperty.bind(this.db) //database handles hashing settings
 		};
 		property = property.split('.');
 		const setPropertyFunc = componentSetPropertyFuncs[property[0]];
@@ -74,40 +67,11 @@ class SecureLogin {
 
 		return this;
 	}
-
-
-
-
-
-	setProperty(property, value) { //enable and disable functions
-		switch(property[0]) {
-			case 'express':
-				if (typeof value !== "boolean") throw new TypeError('sl.setProperty: desired sl."' + property[0] +'" value is not of reuqired type boolean.');
-				this.settings[property[0]] = value;
-				this.api.setProperty(property, value); //api is also depdendent on this flag
-				break;
-			default:
-				throw new ReferenceError('sl.setProperty: "' + property[0] + '" is not an SL property. You cannot set its value.');
-				break;
-		}
-	}
-
-
-
-
-
-	middleware(req, res, n = ()=>{}) {
-		let next = (req, res) => {
-			if (this.settings['express']) n();
-			else n(req, res);
-		};
-
-		Promise.resolve()
-			.then(() => this.sessionManager.attachSession(req, res))
-			.then(() => this.api.router(req, res))
-			.then(() => next(req, res))
-			.catch((err) => {console.log(err); next(req, res);})
-	}
 }
 
-module.exports = new SecureLogin();
+
+
+
+
+module.exports = exports = new SecureLogin();
+exports.SecureLogin = SecureLogin; //for testing purposes
