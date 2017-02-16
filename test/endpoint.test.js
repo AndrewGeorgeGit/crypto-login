@@ -1,6 +1,7 @@
 const mocha = require("mocha");
 const sinon = require("sinon");
 const assert = require("assert");
+const slCodes = require("../codes");
 const Endpoint = require("../endpoint");
 const DatabaseReceipt = require("../receipt");
 const Credentials = require("../database").Credentials;
@@ -159,7 +160,25 @@ describe("Endpoint", function() {
       });
 
       describe("#start throws an error", function() {
+         let ep, cbSpy = sinon.spy();
+         beforeEach(function() {
+            cbSpy.reset();
+            ep = new Endpoint();
+            ep.setFunction("start", function(_, callback) { callback(new Error()); });
+            ep.run(null, null, null, cbSpy);
+         });
 
+         it("error is passed", function() {
+            assert(cbSpy.args[0][0]);
+         });
+
+         it("error contains original error thrown", function() {
+            assert(cbSpy.args[0][0].err);
+         });
+
+         it("error contains slCode indicating error comes from the databse", function() {
+            assert(cbSpy.args[0][0].slCode === slCodes.DATABASE_ERROR);
+         });
       });
    });
 });
