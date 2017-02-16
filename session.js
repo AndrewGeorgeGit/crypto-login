@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const cookie = require("cookie");
+const slCodes = require("./codes.js");
 
 
 
@@ -99,17 +100,17 @@ class SecureLoginSessionManager {
 
          generateSessionId((err, sessionId) => {
             if (err) {
-               console.log("sl.sessions.run: error thrown generating session id", err);
-               next(); //todo: pass error to this callback
+               const e = new Error("sl.session.run: couldn't generate session id");
+               e.slCode = slCodes.SESSION_ID_ERROR;
+               e.err = err;
+               next(e);
                return;
             }
-            //todo: hardcoding anon timeout values
+
             sessionId = sessionId.toString('hex');
             req.session = new Session(sessionId, this.settings.timeouts.anon.idle, this.settings.timeouts.anon.max);
             this.setCookie(res, this.anonCookie, sessionId);
-
             this.sessions[sessionId] = req.session;
-
             next();
          });
          return;

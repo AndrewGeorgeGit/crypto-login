@@ -3,6 +3,7 @@ const sinon = require("sinon");
 const assert = require("assert");
 const http = require("http");
 const SessionManager = require("../session");
+const slCodes = require("../codes.js")
 
 describe("Sessions", function() {
    let req, res, session, sessionManager;
@@ -56,6 +57,37 @@ describe("Sessions", function() {
          sessionManager.run(req, res, function() {
             assert(!req.session);
          });
+      });
+   });
+
+   describe("Unable to Generate session ids", function() {
+      before(function() {
+         sinon.stub(require("crypto"), "randomBytes").yields(new Error("test error"));
+      });
+
+      after(function() {
+         require("crypto").randomBytes.restore();
+      });
+
+      const nextSpy = sinon.spy();
+      beforeEach(function(done) {
+         nextSpy.reset();
+         sessionManager.run(req, res, err => {
+            nextSpy(err);
+            done();
+         });
+      });
+
+      it("error is passed", function() {
+         assert(nextSpy.args[0][0]);
+      });
+
+      it("error contains original error thrown", function() {
+         assert(nextSpy.args[0][0].err);
+      });
+
+      it("error contains slCode indicating failure to make session id", function() {
+         assert(nextSpy.args[0][0].slCode === slCodes.SESSION_ID_ERROR);
       });
    });
 
