@@ -22,7 +22,7 @@ class SecureLogin {
 	run(req, res, next) {
 		if (this.stage !== "on") { //DB not open. sl is not guaranteed to work.
 			const err = new Error("sl: not started yet.");
-			err.errno = this.stage == slCodes[this.stage === "starting" ? "STILL_STARTING" : "NOT_STARTED" ];
+			err.slCode = this.stage == slCodes[this.stage === "starting" ? "STILL_STARTING" : "NOT_STARTED" ];
 			next(err);
 			return;
 		}
