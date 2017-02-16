@@ -73,12 +73,21 @@ class SecureLoginSessionManager {
             this.settings[property[0]] = value;
             break;
          case "timeouts":
-            if (typeof value !== "number")  throw new TypeError("sl.session.setProperty: desired sl.session." + property[0] + " value is not of required type number."); //todo: make sure floating-point values aren't added
-            //todo: actually set value
+            if (typeof value !== "number")  throw new TypeError("sl.session.setProperty: desired sl.session." + setting + " value is not of required type number."); //todo: make sure floating-point values aren't added
+            try {
+               const setting = this.settings[property[0]][property[1]];
+               if (!setting[property[2]]) throw new Error();
+               setting[property[2]] = value;
+            } catch (_) {
+               throw new ReferenceError("sl.session.setProperty: '" + property.join(".") + "' is not a sl.session property. You cannot set its value");
+            }
             break;
          default:
-         break;
+				throw new ReferenceError('sl.session.setProperty: "' + property[0] + '" is not a sl.session property. You cannot set its value.');
+				break;
       }
+
+      return this;
    }
 
    run(req, res, next) {

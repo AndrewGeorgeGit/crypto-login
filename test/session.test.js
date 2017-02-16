@@ -14,9 +14,36 @@ describe("Sessions", function() {
       sessionManager.sessions["wxyz"] = session;
    });
 
-   describe("#setProperty", function() {}); //todo
+   describe("#setProperty", function() {
+      it("returns self", function() {
+         assert(sessionManager.setProperty(["use"], true) === sessionManager);
+      });
 
-   describe("Sessions or Anonymous Sessions Disabled", function() { //todo: can this really be tested
+      it("throws if no boolean value is provided to a boolean poperty", function() {
+         assert.throws(() => sessionManager.setProperty(["use"], null));
+      });
+
+      it("throws if no number value is provided to a number property", function() {
+         assert.throws(() => sessionManager.setProperty(["timeouts", "anon", "max"], null));
+      });
+
+      it("throws if invalid timeout property provided", function() {
+         assert.throws(() => sessionManager.setProperty(["timeouts", "anon", null], -1));
+         assert.throws(() => sessionmanager.setProperty(["timeouts", null, "idle"], -1));
+      });
+
+      it("updates the correct timeout property", function() {
+         const oldAnonMax = sessionManager.settings.timeouts.anon.max;
+         sessionManager.setProperty(["timeouts", "anon", "max"], 20);
+         assert(oldAnonMax !== sessionManager.settings.timeouts.anon.max);
+      });
+
+      it("throws if invalid property is provided", function() {
+         assert.throws(() => sessionManager.setProperty(["invalid"], true));
+      });
+   });
+
+   describe("Sessions or Anonymous Sessions Disabled", function() {
       it("sessions disabled: no session present", function() {
          sessionManager.settings.use = false;
          sessionManager.run(req, res, function() {
