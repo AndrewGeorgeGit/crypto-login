@@ -84,8 +84,6 @@ class SecureLoginDatabase {
 	}
 
 	start(callback) {
-		this.db = new sqlite3.Database(this.settings.path); //todo: still puts db in relative path, close
-
 		//creating table if need be
 		let sql = `CREATE TABLE IF NOT EXISTS ${this.tableName}`;
 		sql += `(`;
@@ -95,8 +93,10 @@ class SecureLoginDatabase {
 		sql = sql.slice(0, -1); //removing extra comma
 		sql += `);`;
 
-		//executing statement
-		this.db.run(sql, err => callback(err));
+		this.db = new sqlite3.Database(this.settings.path, err => {
+			if (err) {} //todo
+			this.db.run(sql, callback);
+		}); //todo: still puts db in relative path, close
 	}
 
 	addUser(credentials, callback) {
