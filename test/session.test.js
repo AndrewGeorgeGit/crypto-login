@@ -13,6 +13,10 @@ describe("Sessions", function() {
       sessionManager = new SessionManager.SecureLoginSessionManager();
       session = new SessionManager.Session("wxyz", 1000 * 60 * 10, 1000 * 60 * 10);
       sessionManager.sessions["wxyz"] = session;
+      sessionManager.settings.timeouts = {
+         anon: {idle: 1000, max: 2000},
+         auth: {idle: 3000, max: 4000}
+      };
    });
 
    describe("#setProperty", function() {
@@ -96,12 +100,18 @@ describe("Sessions", function() {
          sessionManager.run(req, res, done);
       });
 
-      it("session is attached", function() {
-         assert(req.session);
+      it("anonymus session is attached", function() {
+         assert(req.session, "session attached");
+         assert(!req.session.authenticated, "session is anonymous");
       });
 
       it("session cookie is present", function() {
-         assert(res.getHeader('Set-Cookie').indexOf(sessionManager.anonCookie) !== -1);
+         assert(res.getHeader('Set-Cookie').indexOf(sessionManager.anonCookie + "=" + req.session.id) !== -1);
+      });
+
+      it("session has correct anon timeouts", function() {
+         assert(req.session.times.idles === sessionManager.settings.timeouts.anon.idle, "idle timeout");
+         assert(req.session.times.expires.valueOf() - req.session.times.created.valueOf() === sessionManager.settings.timeouts.anon.max, "max timeout");
       });
    });
 
@@ -134,6 +144,38 @@ describe("Sessions", function() {
 
       it("new anonymous session is attached", function() {
          assert(req.session !== session && req.session.authenticated === false);
+      });
+   });
+
+   describe("Authenticating Sessions", function() {
+      beforeEach(function(done) {
+         req.session = session;
+         sessionManager.authenticate(req, res, done);
+      });
+      it("attaches authenticated session", function() {
+         assert(req.session, "session is attached");
+         assert(req.session.authenticated, "session is authenticated");
+      });
+
+      it("has correct auth idle/expire times", function() {
+         const expectedMax = req.session.times.expires.valueOf() - req.session.times.created.valueOf();
+         assert(sessionManager.settings.timeouts.auth.idle === req.session.times.idles, "idle timeout");
+         assert(expectedMax === sessionManager.settings.timeouts.auth.max, "max timeout");
+      });
+
+      it("handles failure to generate session id");
+
+      it("Session manager has reference to new session", function() {
+         assert(sessionManager.sessions[req.session.id]);
+      });
+
+      it("cookie has been set correct", function() {
+         assert(res.getHeader('Set-Cookie').indexOf(sessionManager.authCookie + "=" + req.session.id) !== -1);
+      });
+
+      it("anon and auth session are correctly linked", function() {
+         assert(req.session.data === session.data, "they share the same data");
+         assert(req.session.lastPinged === session.lastPinged, "they both share the last ping information")
       });
    });
 });

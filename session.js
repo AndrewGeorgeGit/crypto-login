@@ -78,7 +78,7 @@ class SecureLoginSessionManager {
             try {
                const setting = this.settings[property[0]][property[1]];
                if (!setting[property[2]]) throw new Error();
-               setting[property[2]] = value;
+               setting[property[2]] = value === -1 ? -1 : value * 1000;
             } catch (_) {
                throw new ReferenceError("sl.session.setProperty: '" + property.join(".") + "' is not a sl.session property. You cannot set its value");
             }
@@ -126,7 +126,35 @@ class SecureLoginSessionManager {
    }
 
    authenticate(req, res, next) { //todo
+      if (!this.settings.use || !this.settings.auth) { next(); return; }
 
+      generateSessionId((err, sessionId) => {
+         if (err) {
+            const e = new Error("sl.session.run: couldn't generate session id");
+            e.slCode = slCodes.SESSION_ID_ERROR;
+            e.err = err;
+            next(e);
+            return;
+         }
+
+         //saving previous sesions
+         const anonSession = req.session;
+
+         //adding auth session
+         sessionId = sessionId.toString('hex');
+         req.session = new Session(sessionId, this.settings.timeouts.auth.idle, this.settings.timeouts.auth.max);
+         req.session.authenticated = true;
+         this.setCookie(res, this.authCookie, sessionId);
+         this.sessions[sessionId] = req.session;
+
+         //linking anon and auth sessions
+         if (anonSession) {
+            req.session.data = anonSession.data; //use already established data
+            anonSession.lastPinged = req.session.lastPinged; //auth session will now be the one pinged
+         }
+
+         next();
+      });
    }
 
    setCookie(res, name, value = "") { //default value means to clear cookie
@@ -142,7 +170,8 @@ class SecureLoginSessionManager {
             if (options.maxAge === -1) options.maxAge = undefined;
       }
 
-      res.setHeader('Set-Cookie', cookie.serialize(name, value, options));
+      const otherCookies = res.getHeader('Set-Cookie') || "";
+      res.setHeader('Set-Cookie', otherCookies + cookie.serialize(name, value, options));
    }
 
    on(event, action) {
