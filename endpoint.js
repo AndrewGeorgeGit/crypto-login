@@ -51,7 +51,7 @@ class Endpoint {
 	}
 
 	run(credentials, req, res, next) {
-		this.functions.start(credentials, (err, receipt) => {
+		this.functions.start(credentials, (err, receipt) => { //error comes from db
 			if (err) {
 				const e = new Error("sl.endpoint.run: some database error occurred");
 				e.slCode = slCodes.DATABASE_ERROR;
@@ -59,7 +59,8 @@ class Endpoint {
 				next(e);
 				return;
 			}
-			this.functions._react(receipt, req, res, () => {
+			this.functions._react(receipt, req, res, err => { //error comes from sl internally
+				if (err) { next(err); return; }
 				this.functions.react(receipt, req, res, () => {
 					this.functions.redirect(receipt, req, res, next);
 				});

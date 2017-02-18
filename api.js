@@ -1,11 +1,14 @@
 const SecureLoginEndpoint = require("./endpoint");
 const SecureLoginDatabase = require("./database");
+const SecureLoginSessionManager = require("./session");
+const slCodes = require("./codes");
+const Receipt = require("./receipt");
 
 class SecureLoginApi {
    constructor() {
       this.settings = {
          use: true,
-         namespace: ""
+         namespace: "secure-login"
       };
 
       const endpointStartFuncs = {
@@ -16,8 +19,11 @@ class SecureLoginApi {
          "change-username-auth": SecureLoginDatabase.changeUsernameAuth,
          "change-password": SecureLoginDatabase.changePassword,
          "change-password-auth": SecureLoginDatabase.changePasswordAuth,
-         "login": () => {}, //todo: write these functions
-         "logout": () => {} //todo: write this function
+         "login": SecureLoginDatabase.authenticateUser,
+         "logout": function(credentials, callback) {
+            const receipt = new Receipt(credentials.get("$username")); //todo: successful? consider if the developer has chosen not to use my system
+            callback(null, receipt);
+         }
       }
 
       this.endpoints = {};
@@ -25,6 +31,21 @@ class SecureLoginApi {
          this.endpoints[endpoint] = new SecureLoginEndpoint();
          this.endpoints[endpoint].setFunction("start", endpointStartFuncs[endpoint]);
       }
+
+      this.endpoints.login.functions._react = function(receipt, req, res, next) {
+         if (!receipt.success) { next(); return; }
+         SecureLoginSessionManager.authenticate(next);
+      };
+
+      this.endpoints.logout.functions._react = function(receipt, req, res, next) {
+         if(!req.session || !req.session.authenticated || !SecureLoginSessionManager.settings.use) { //can't logout if no sl authenticated session
+            receipt.setSuccess(false);
+            receipt.setFailCode(slCodes.NOT_AUTHENTICATED);
+            next();
+            return;
+         }
+         SecureLoginSessionManager.unauthenticate(req, res, next);
+      };
    }
 
    setProperty(property, value) {
