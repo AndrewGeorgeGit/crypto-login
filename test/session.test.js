@@ -10,7 +10,7 @@ describe("Sessions", function() {
    beforeEach(function() {
       req = new http.IncomingMessage();
       res = new http.ServerResponse(req);
-      sessionManager = new SessionManager();
+      sessionManager = new SessionManager.SecureLoginSessionManager();
       session = new SessionManager.Session("wxyz", 1000 * 60 * 10, 1000 * 60 * 10);
       sessionManager.sessions["wxyz"] = session;
    });

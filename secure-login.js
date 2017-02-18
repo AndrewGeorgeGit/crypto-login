@@ -11,7 +11,7 @@ class SecureLogin {
 	constructor() {
 		this.stage = "off";
 		this.db = SecureLoginDatabase;
-		this.sessionManager = new SecureLoginSessionManager();
+		this.sessionManager = SecureLoginSessionManager;
 		this.api = new SecureLoginApi();
 	}
 

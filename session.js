@@ -125,6 +125,10 @@ class SecureLoginSessionManager {
       next();
    }
 
+   authenticate(req, res, next) { //todo
+
+   }
+
    setCookie(res, name, value = "") { //default value means to clear cookie
       const options = {
          httpOnly: true,
@@ -150,5 +154,6 @@ class SecureLoginSessionManager {
 
 
 
-module.exports = exports = SecureLoginSessionManager;
+module.exports = exports = new SecureLoginSessionManager();
+exports.SecureLoginSessionManager = SecureLoginSessionManager;
 exports.Session = Session;
