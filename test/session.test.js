@@ -6,13 +6,16 @@ const SessionManager = require("../session");
 const slCodes = require("../codes.js")
 
 describe("Sessions", function() {
-   let req, res, session, sessionManager;
+   let req, res, session, sessionManager, authSession;
    beforeEach(function() {
       req = new http.IncomingMessage();
       res = new http.ServerResponse(req);
       sessionManager = new SessionManager.SecureLoginSessionManager();
       session = new SessionManager.Session("wxyz", 1000 * 60 * 10, 1000 * 60 * 10);
       sessionManager.sessions["wxyz"] = session;
+      authSession = new SessionManager.Session("wxyz_auth", 1000, 2000);
+      authSession.authenticated = true;
+      sessionManager.sessions["wxyz_auth"] = authSession;
       sessionManager.settings.timeouts = {
          anon: {idle: 1000, max: 2000},
          auth: {idle: 3000, max: 4000}
@@ -177,6 +180,27 @@ describe("Sessions", function() {
          assert(req.session.data === session.data, "they share the same data");
          assert(req.session.lastPinged === session.lastPinged, "they both share the last ping information")
       });
+   });
+
+   describe("Unauthenticate", function() {
+      beforeEach(function(done) {
+         req.session = authSession;
+         req.headers.cookie = sessionManager.authCookie + "=wxyz_auth" + ";" + sessionManager.anonCookie + "=wxyz";
+         sessionManager.unauthenticate(req, res, done);
+      });
+
+      it("session was deleted from session manager", function() {
+         assert(!sessionManager.sessions["wxyz_auth"]);
+      });
+
+      it("set-cookie present", function() {
+         const setCookie = res.getHeader('Set-Cookie');
+         assert(setCookie.indexOf(sessionManager.authCookie) !== -1);
+      });
+
+      it("an anonymous session is now attached", function() {
+         assert(req.session === session);
+      })
    });
 });
 

@@ -157,6 +157,23 @@ class SecureLoginSessionManager {
       });
    }
 
+   unauthenticate(req, res, next) {
+      if (!req.session || !req.session.authenticated || !this.settings.auth) { //nothing to do if no authenticated session attached
+         next();
+         return;
+      }
+
+      //removing authenticated session client and server side
+      delete this.sessions[req.session.id];
+      this.setCookie(res, this.authCookie);
+
+      //attaching anon session if present
+      const anonSessionId = cookie.parse(req.headers.cookie || "")[this.anonCookie];
+      req.session = this.sessions[anonSessionId];
+
+      next();
+   }
+
    setCookie(res, name, value = "") { //default value means to clear cookie
       const options = {
          httpOnly: true,
@@ -170,12 +187,12 @@ class SecureLoginSessionManager {
             if (options.maxAge === -1) options.maxAge = undefined;
       }
 
-      const otherCookies = res.getHeader('Set-Cookie') || "";
+      const otherCookies = res.getHeader('Set-Cookie') + "&" || "";
       res.setHeader('Set-Cookie', otherCookies + cookie.serialize(name, value, options));
    }
 
    on(event, action) {
-      //todo: create, idle, expire
+      //todo: create, idle, expire, auth, unauth
    }
 }
 
