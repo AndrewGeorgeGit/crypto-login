@@ -19,10 +19,16 @@ class Session {
 
    set(property, value) {
       this.data[property] = value;
+      return this;
    }
 
    get(property) {
       return this.data[property];
+   }
+
+   remove(property) {
+         delete this.data[property];
+         return this;
    }
 
    //updates lastPinged if the session has not idled or expired
