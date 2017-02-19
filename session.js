@@ -87,7 +87,7 @@ class SecureLoginSessionManager {
                //setting property
                setting[property[2]] = value === -1 ? -1 : value * 1000;
             } catch (err) {
-               throw ;
+               throw err;
             }
             break;
          default:

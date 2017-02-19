@@ -21,7 +21,6 @@ class SecureLoginApi {
          "change-password-auth": SecureLoginDatabase.changePasswordAuth,
          "login": SecureLoginDatabase.authenticateUser,
          "logout": (credentials, callback) =>  callback(null, new Receipt(credentials.get("$username")))
-         }
       }
 
       this.endpoints = {};
