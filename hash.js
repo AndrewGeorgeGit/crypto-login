@@ -4,8 +4,6 @@ const crypto = require('crypto');
 
 
 
-//todo: allow setting of these values
-//I dislike arbitrary settings here. These settings need to be accessible (and changeable) elsewhere
 settings = {
    iterations: 20000,
    length: 64
@@ -15,7 +13,6 @@ settings = {
 
 
 
-//
 function setProperty(property, value) {
    switch(property[0]) {
       case 'iterations':

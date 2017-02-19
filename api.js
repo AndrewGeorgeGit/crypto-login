@@ -20,9 +20,7 @@ class SecureLoginApi {
          "change-password": SecureLoginDatabase.changePassword,
          "change-password-auth": SecureLoginDatabase.changePasswordAuth,
          "login": SecureLoginDatabase.authenticateUser,
-         "logout": function(credentials, callback) {
-            const receipt = new Receipt(credentials.get("$username")); //todo: successful? consider if the developer has chosen not to use my system
-            callback(null, receipt);
+         "logout": (credentials, callback) =>  callback(null, new Receipt(credentials.get("$username")))
          }
       }
 
@@ -32,6 +30,7 @@ class SecureLoginApi {
          this.endpoints[endpoint].setFunction("start", endpointStartFuncs[endpoint]);
       }
 
+      //login, logout have auxillary functionality after dealing with the database
       this.endpoints.login.functions._react = function(receipt, req, res, next) {
          if (!receipt.success) { next(); return; }
          SecureLoginSessionManager.authenticate(next);
@@ -42,9 +41,11 @@ class SecureLoginApi {
             receipt.setSuccess(false);
             receipt.setFailCode(slCodes.NOT_AUTHENTICATED);
             next();
-            return;
+         } else {
+            receipt.setSuccess(true);
+            SecureLoginSessionManager.unauthenticate(req, res, next);
+            next();
          }
-         SecureLoginSessionManager.unauthenticate(req, res, next);
       };
    }
 

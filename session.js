@@ -6,14 +6,6 @@ const slCodes = require("./codes.js");
 
 
 
-function generateSessionId(cb) {
-   crypto.randomBytes(32, cb); //todo: remove hardcoded values
-}
-
-
-
-
-
 class Session {
    constructor(id, idleTime, expireTime) {
       this.id = id;
@@ -57,9 +49,10 @@ class SecureLoginSessionManager {
 			secure: true,
 			anon: true,
 			auth: true,
+         id_length: 32,
 			timeouts: {
-				anon: { idle: 0, max: 1000 * 60 * 60 * 24 * 365 * 10 }, //does this wreck the cookie?. todo: what happens if non-integers? Negative? Why can't we use Number.MAX_SAFE_INTEGER?
-				auth: {	idle: 60 * 60 * 1000, max: -1	}	//todo: fix session-binding issue if anon session expires before auth session, make these only set to integer values, throw an error if max < idle?
+				anon: { idle: 0, max: 1000 * 60 * 60 * 24 * 365 * 10 },
+				auth: {	idle: 60 * 60 * 1000, max: -1	}
 			}
 		};
    }
@@ -73,14 +66,22 @@ class SecureLoginSessionManager {
             if (typeof value !== "boolean")  throw new TypeError("sl.session.setProperty: desired sl.session." + property[0] + " value is not of required type boolean.");
             this.settings[property[0]] = value;
             break;
+         case "id_length":
+            if (typeof value !== "number")  throw new TypeError("sl.session.setProperty: desired sl.session." + property[0] + " value is not of required type number.");
+            this.settings[property[0]] = value;
+            break;
          case "timeouts":
-            if (typeof value !== "number")  throw new TypeError("sl.session.setProperty: desired sl.session." + setting + " value is not of required type number."); //todo: make sure floating-point values aren't added
+            if (typeof value !== "number")  throw new TypeError("sl.session.setProperty: desired sl.session." + setting + " value is not of required type number.");
             try {
+               //seeing if desired timeout exists
                const setting = this.settings[property[0]][property[1]];
-               if (!setting[property[2]]) throw new Error();
+               const settingValue = setting[property[2]];
+               if (!settingValue) throw new ReferenceError("sl.session.setProperty: '" + property.join(".") + "' is not a sl.session property. You cannot set its value");
+
+               //setting property
                setting[property[2]] = value === -1 ? -1 : value * 1000;
-            } catch (_) {
-               throw new ReferenceError("sl.session.setProperty: '" + property.join(".") + "' is not a sl.session property. You cannot set its value");
+            } catch (err) {
+               throw ;
             }
             break;
          default:
@@ -98,7 +99,7 @@ class SecureLoginSessionManager {
       if (!session) {
          if (!this.settings.anon) { next(); return; } //don't automatically attach session if not desired
 
-         generateSessionId((err, sessionId) => {
+         this.generateSessionId((err, sessionId) => {
             if (err) {
                const e = new Error("sl.session.run: couldn't generate session id");
                e.slCode = slCodes.SESSION_ID_ERROR;
@@ -116,6 +117,7 @@ class SecureLoginSessionManager {
          return;
       } else if (session.ping() !== "valid") { //invalid session present
          delete this.sessions[session.id];
+         this.setCookie(res, session.authenticated ? this.authCookie : this.anonCookie); //removing it client side
          this.run(req, res, next); //go through to attach new session
          return;
       } else { //valid session is present
@@ -125,10 +127,10 @@ class SecureLoginSessionManager {
       next();
    }
 
-   authenticate(req, res, next) { //todo
+   authenticate(req, res, next) {
       if (!this.settings.use || !this.settings.auth) { next(); return; }
 
-      generateSessionId((err, sessionId) => {
+      this.generateSessionId((err, sessionId) => {
          if (err) {
             const e = new Error("sl.session.run: couldn't generate session id");
             e.slCode = slCodes.SESSION_ID_ERROR;
@@ -174,21 +176,39 @@ class SecureLoginSessionManager {
       next();
    }
 
-   setCookie(res, name, value = "") { //default value means to clear cookie
-      const options = {
+   setCookie(res, name, value = "") {
+      const options = { //default options will cause the cookie to be invalidated client-side
          httpOnly: true,
          secure: this.settings.secure,
          path: "/",  //todo: why?
-         maxAge: 0   //todo: IE integration (expires)
+         maxAge: 0,
+         expires: new Date(Date.now() - 1000) //for IE
       };
 
       if(value) {
-            options.maxAge = this.settings.timeouts[name === this.anonCookie ? "anon" : "auth"].max;
-            if (options.maxAge === -1) options.maxAge = undefined;
+            const maxAge = this.settings.timeouts[name === this.anonCookie ? "anon" : "auth"].max;
+            if (maxAge === -1) options.maxAge = options.expires = undefined;
+            else {
+               //todo: these are not guaranteed to create the same cookie
+               options.maxAge = maxAge / 1000;
+               options.expires = this.sessions[value].times.expires;
+            }
       }
 
-      const otherCookies = res.getHeader('Set-Cookie') + "&" || "";
-      res.setHeader('Set-Cookie', otherCookies + cookie.serialize(name, value, options));
+      let setCookieHeader = res.getHeader('Set-Cookie');
+      const newCookie = cookie.serialize(name, value, options);
+      if (!otherCookies) {
+         setCookieHeader = [ newCookie ];
+      } else if (typeof setCookieHeader === "string") {
+         setCookieHeader = [ setCookieHeader, newCookie ];
+      } else { //assummed header is valid, the only remaing possibility is an array
+         setCookieHeader.push(newCookie);
+      }
+      res.setHeader('Set-Cookie', setCookieHeader);
+   }
+
+   generateSessionId(cb) {
+      crypto.randomBytes(this.settings.id_length, cb);
    }
 
    on(event, action) {

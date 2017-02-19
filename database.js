@@ -94,9 +94,9 @@ class SecureLoginDatabase {
 		sql += `);`;
 
 		this.db = new sqlite3.Database(this.settings.path, err => {
-			if (err) {} //todo
-			this.db.run(sql, callback);
-		}); //todo: still puts db in relative path, close
+			if (err) callback(err);
+			else this.db.run(sql, callback);
+		});
 	}
 
 	addUser(credentials, callback) {
@@ -116,17 +116,17 @@ class SecureLoginDatabase {
 				return;
 			}
 
-			if (!credentials.isDatabaseReady()) { //todo: what if no $username or $password?
+			if (!credentials.isDatabaseReady()) {
 				hash(credentials, run);
 				return;
 			}
 
-			//creating sql, todo: combine with update password
+			//creating sql
 			let sql = `INSERT INTO ${singleton.tableName}`;
 			let columns = "", values = "";
 			for (let column in singleton.columns) {
 				columns += `${column},`
-				values += `$${column},` //todo: hard coded dollar sign
+				values += `$${column},`
 			}
 			sql += `(${columns.slice(0, -1)}) VALUES (${values.slice(0,-1)})`;
 
@@ -169,7 +169,7 @@ class SecureLoginDatabase {
 			} else if (!row) {
 				receipt.setSuccess(false);
 				receipt.setFailReason(slCodes.USER_DNE);
-				callback(null, receipt); //todo: should receipt return an invalid username?
+				callback(null, receipt);
 				return;
 			}
 

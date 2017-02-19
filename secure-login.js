@@ -39,7 +39,8 @@ class SecureLogin {
 	start() {
 		if (this.stage !== "off") return;
 		this.stage = "starting";
-		this.db.start(() => {
+		this.db.start(err => {
+			if (err) { this.stage = "failed"; return; }
 			this.stage = "on";
 		});
 		return this;
