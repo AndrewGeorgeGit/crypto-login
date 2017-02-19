@@ -81,6 +81,7 @@ class SecureLoginDatabase {
 				throw new ReferenceError('sl.db.setProperty: "' + property[0] + '" is not a sl.db property. You cannot set its value.');
 				break;
 		}
+		return this;
 	}
 
 	start(callback) {

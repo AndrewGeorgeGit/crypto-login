@@ -48,6 +48,7 @@ class Endpoint {
 			return;
 		}
 		this.redirects = redirects;
+		return this;
 	}
 
 	run(credentials, req, res, next) {

@@ -8,10 +8,12 @@ class DatabaseReceipt {
 
 	setSuccess(success) {
 		this.success = success;
+		return this;
 	}
 
 	setFailReason(failReason) {
 		this.failReason = failReason;
+		return this;
 	}
 }
 
