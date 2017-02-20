@@ -257,7 +257,7 @@ class SecureLoginDatabase {
 		if(!credentials.has("$username") || !credentials.has("$newPassword")) {
 			const receipt = new DatabaseReceipt(credentials.get("$username"));
 			receipt.setSuccess(false);
-			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.PASSWORD_REQUIRED);
+			receipt.setFailReason(!credentials.has("$username") ? slCodes.USERNAME_REQUIRED : slCodes.NEW_PASSWORD_REQUIRED);
 			callback(null, receipt);
 			return;
 		}
