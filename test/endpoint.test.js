@@ -4,7 +4,7 @@ const assert = require("assert");
 const slCodes = require("../codes");
 const Endpoint = require("../endpoint");
 const DatabaseReceipt = require("../receipt");
-const Credentials = require("../database").Credentials;
+const SecureLoginCredentials = require("../credentials");
 const Request = require("http").IncomingMessage;
 const Response = require("http").ServerResponse;
 
@@ -137,7 +137,7 @@ describe("Endpoint", function() {
             redirectSpy = sinon.spy(ep.functions, "redirect"),
             nextSpy = sinon.spy();
 
-         const credentials = new Credentials({$username: "username"}),
+         const credentials = new SecureLoginCredentials({$username: "username"}),
             request = new Request(),
             response = new Response(request);
 

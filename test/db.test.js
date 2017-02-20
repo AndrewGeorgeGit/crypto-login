@@ -1,9 +1,10 @@
-const mocha = require('mocha');
-const sinon = require('sinon');
-const assert = require('assert');
-const hash = require('../hash');
-const db = require('../database');
-const slCodes = require('../codes');
+const mocha = require("mocha");
+const sinon = require("sinon");
+const assert = require("assert");
+const hash = require("../hash");
+const db = require("../database");
+const SecureLoginCredentials = require("../credentials");
+const slCodes = require("../codes");
 
 
 
@@ -19,7 +20,7 @@ describe('Database', function() {
 
    //add 'username'/'password'
    describe('#addUser', function() {
-      const creds = new db.Credentials({$username: "username", $password: "password"});
+      const creds = new SecureLoginCredentials({$username: "username", $password: "password"});
       describe('case: user does not already exist', function() {
          let err, receipt;
          before(function(done) {
@@ -64,7 +65,7 @@ describe('Database', function() {
       describe("case: required credentials missing", function() {
          let receipt;
          function callback(e, r) { receipt = r; }
-         const creds = new db.Credentials();
+         const creds = new SecureLoginCredentials();
          db.addUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
@@ -83,7 +84,7 @@ describe('Database', function() {
 
    //check for 'username'/'password'
    describe("#authenticateUser", function() {
-      const creds = new db.Credentials({$username: "invalid_username", $password: "invalid_password"});
+      const creds = new SecureLoginCredentials({$username: "invalid_username", $password: "invalid_password"});
       describe("case: invalid username", function() {
          let err, receipt;
          before(function(done) {
@@ -134,7 +135,7 @@ describe('Database', function() {
       describe("case: required credentials missing", function() {
          let receipt;
          function callback(e, r) { receipt = r; }
-         const creds = new db.Credentials();
+         const creds = new SecureLoginCredentials();
          db.authenticateUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));
@@ -153,7 +154,7 @@ describe('Database', function() {
 
    describe("#changePassword", function() {
       describe("case: valid username", function() {
-         const creds = new db.Credentials({$username: "username", $newPassword: "newpassword"});
+         const creds = new SecureLoginCredentials({$username: "username", $newPassword: "newpassword"});
          let err, receipt;
          before(function(done) {
             db.changePassword(creds, (e,r) => { err = e; receipt = r; done(); });
@@ -174,7 +175,7 @@ describe('Database', function() {
       });
 
       describe("case: invalid username", function() {
-         const creds = new db.Credentials({$username: "invalid_username", $newPassword: "newpassword"});
+         const creds = new SecureLoginCredentials({$username: "invalid_username", $newPassword: "newpassword"});
          let err, receipt;
          before(function(done) {
             db.changePassword(creds, (e,r) => { err = e; receipt = r; done(); });
@@ -187,7 +188,7 @@ describe('Database', function() {
       });
 
       describe("case: required credentials missing", function() {
-         const creds = new db.Credentials();
+         const creds = new SecureLoginCredentials();
          let receipt;
          function callback(e, r) { receipt = r; }
 
@@ -195,10 +196,10 @@ describe('Database', function() {
          it("receipt contains passed username", () => assert(receipt.username === creds.get("$username")));
          it("receipt indicates failure", () => assert(!receipt.success));
          it("(missing username) receipt's failReason is set to USERNAME_REQUIRED", () => assert(receipt.failReason === slCodes.USERNAME_REQUIRED));
-         it("(missing newPassword) receipt's failReason is set to PASSWORD_REQUIRED", () => {
+         it("(missing newPassword) receipt's failReason is set to NEW_PASSWORD_REQUIRED", () => {
             creds.set("$username", "username");
             db.changePassword(creds, callback);
-            assert(receipt.failReason === slCodes.PASSWORD_REQUIRED);
+            assert(receipt.failReason === slCodes.NEW_PASSWORD_REQUIRED);
          });
       });
    });
@@ -210,7 +211,7 @@ describe('Database', function() {
    describe("#changeUsername", function() {
       let err, receipt;
       describe("case: new user does not exist", function() {
-         const creds = new db.Credentials({$username: 'username', $newUsername: 'andrew'})
+         const creds = new SecureLoginCredentials({$username: 'username', $newUsername: 'andrew'})
          before(function(done) {
             db.changeUsername(creds, (e,r) => { err = e; receipt = r; done(); });
          });
@@ -234,7 +235,7 @@ describe('Database', function() {
       });
 
       describe("case: new user exists", function() {
-         const creds = new db.Credentials({$username: 'andrew', $newUsername: 'george'})
+         const creds = new SecureLoginCredentials({$username: 'andrew', $newUsername: 'george'})
 
          before(function(done) { //adding dummy user
             db.db.run(`INSERT INTO ${db.tableName}(username) VALUES('george')`, [], err => done(err));
@@ -258,7 +259,7 @@ describe('Database', function() {
       });
 
       describe("case: old user does not exist", function() {
-         const creds = new db.Credentials({$username: "username", $newUsername: "andy"});
+         const creds = new SecureLoginCredentials({$username: "username", $newUsername: "andy"});
          let err, receipt;
          before(function(done) {
             db.changeUsername(creds, (e,r) => { err = e; receipt = r; done(); });
@@ -270,7 +271,7 @@ describe('Database', function() {
       });
 
       describe("case: required credentials missing", function() {
-         const creds = new db.Credentials();
+         const creds = new SecureLoginCredentials();
          let receipt;
          function callback(e, r) { receipt = r; }
          db.changeUsername(creds, callback);
@@ -290,7 +291,7 @@ describe('Database', function() {
 
 
    describe("#removeUser", function() {
-      const creds = new db.Credentials({$username: "andrew"});
+      const creds = new SecureLoginCredentials({$username: "andrew"});
       describe("case: user exists", function() {
          let err, receipt;
          before(function(done) {
@@ -322,7 +323,7 @@ describe('Database', function() {
       describe("case: required credentials missing", function() {
          let receipt;
          function callback(e, r) { receipt = r; }
-         const creds = new db.Credentials();
+         const creds = new SecureLoginCredentials();
          db.removeUser(creds, callback);
          it("receipt contains passed username", () => assert(receipt.username === creds.username));
          it("receipt indicates failure", () => assert(!receipt.success));

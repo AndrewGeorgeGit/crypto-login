@@ -1,11 +1,11 @@
-const mocha = require('mocha');
-const assert = require('assert');
-const hash = require('../hash');
-const db = require('../database'); //for Credentials object
+const mocha = require("mocha");
+const assert = require("assert");
+const hash = require("../hash");
+const SecureLoginCredentials = require("../credentials"); //for Credentials object
 
 describe("hash.js", function() {
    describe('pbkdf2 hashing', function() {
-      const creds = new db.Credentials({$username: "username", $password: "password"});
+      const creds = new SecureLoginCredentials({$username: "username", $password: "password"});
       before(function(done) {
          hash(creds, () => done());
       });
