@@ -5,81 +5,13 @@ secure-login (SL) is a Node.js user authentication and management system. User l
 ## install
 `$ npm install secure-login`
 
-## setup
-using http.Server:
-```javascript
-const sl = require('secure-login').start();
+## getting started
+[View the Wiki](https://github.com/DevAndrewGeorge/secure-login/wiki) to see code samples and get caught up to speed.
 
-//using SL with a regular http server
-require('http').createServer((req, res) => {
-  sl.api.router(req, res, next);
-}).listen(3000);
-
-function next(req, res) { /* deal with requests not relevant to SL */ }
-```
-
-using express:
-```javascript
-//SL setup
-const sl = require('secure-login').start();
-sl.api.set('express', true);
-
-//express setup
-const app = require('express')();
-app.listen(3000);
-app.use(sl.api.router.bind(sl.api));
-```
-# under the hood
-## how it works
-You can connect your client-side forms by using the [Form API](https://github.com/AndrewGeorgeGit/secure-login/wiki/Form-API). You also have the ability to call associated functions in your code for more low-level control. 
-
-## Form API example
-client-side:
-```html
-<!-- all form actions must be directed towards /secure-login/${ENDPOINT} or they will fall through sl.api.router -->
-<!-- endpoints include: add-user, remove-user, change-username, change-password, login -->
-<form action='/secure-login/add-user' method=post>
-<input type=text name=username required>
-<input type=password name=password required>
-<input type=submit>
-</form>
-```
-
-sever-side:
-```javascript
-//the function passed to the 'on' or 'redirect' methods MUST return a Promise 
-let func = (result, req, res) => {
-  return new Promise(function(resolve,reject) {
-    if (result) { /* user added successfully */ }
-    else { /* failed to add user (username taken) */ }
-    resolve();
-  }
-});
-
-//func will be executed after SL attempts to add the user
-sl.api.on('add-user', func);
-
-//sl.api.redirect will redirect you to relevant success/failure pages
-//func is an optional parameter
-sl.api.redirect('add-user', {success: 'dashboard.html', failure: 'try_again.html'}, func);
-```
-
-## function calls
-```javascript
-//initialization
-const sl = require("secure-login");
-
-// all functions (1) return a promise and (2) take a single argument 'credentials'
-// it is an object with relevant keys from username, password, newUsername, newPassword
-sl.authenticate({username: 'user', password: 'pass'});
-sl.addUser({username: 'user', password: 'pass'}); 
-sl.removeUser({username: 'user'});
-sl.changeUsername({username: 'user', newUsername: 'user2'});
-sl.changePassword({username: 'user', newPassowrd: 'pass2'});
-```
-
-# future plans
+## future plans
+- Actually write a decent README
+- Finish implementing tests (some DB functions, login, logout)
+- Implement session events (onAuthenticate, onUnauthenticate, onTimeout, etc.)
+- Rewrite/strengthen tests
 - Passportjs support
-- Session management
 - client-side javascript to verify username uniqueness and password strength
-- add more to the wiki
