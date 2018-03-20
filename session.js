@@ -116,8 +116,8 @@ class SecureLoginSessionManager {
 
             sessionId = sessionId.toString('hex');
             req.session = new Session(sessionId, this.settings.timeouts.anon.idle, this.settings.timeouts.anon.max);
-            this.setCookie(res, this.anonCookie, sessionId);
             this.sessions[sessionId] = req.session;
+            this.setCookie(res, this.anonCookie, sessionId);
             next();
          });
          return;
@@ -152,8 +152,9 @@ class SecureLoginSessionManager {
          sessionId = sessionId.toString('hex');
          req.session = new Session(sessionId, this.settings.timeouts.auth.idle, this.settings.timeouts.auth.max);
          req.session.authenticated = true;
-         this.setCookie(res, this.authCookie, sessionId);
          this.sessions[sessionId] = req.session;
+         this.setCookie(res, this.authCookie, sessionId);
+         
 
          //linking anon and auth sessions
          if (anonSession) {
@@ -203,7 +204,7 @@ class SecureLoginSessionManager {
 
       let setCookieHeader = res.getHeader('Set-Cookie');
       const newCookie = cookie.serialize(name, value, options);
-      if (!otherCookies) {
+      if (!setCookieHeader) {
          setCookieHeader = [ newCookie ];
       } else if (typeof setCookieHeader === "string") {
          setCookieHeader = [ setCookieHeader, newCookie ];

@@ -109,7 +109,8 @@ describe("Sessions", function() {
       });
 
       it("session cookie is present", function() {
-         assert(res.getHeader('Set-Cookie').indexOf(sessionManager.anonCookie + "=" + req.session.id) !== -1);
+         assert(res.getHeader('Set-Cookie').find(
+            str => str.indexOf(sessionManager.anonCookie + "=" + req.session.id) !== -1));
       });
 
       it("session has correct anon timeouts", function() {
@@ -173,7 +174,8 @@ describe("Sessions", function() {
       });
 
       it("cookie has been set correct", function() {
-         assert(res.getHeader('Set-Cookie').indexOf(sessionManager.authCookie + "=" + req.session.id) !== -1);
+          assert(res.getHeader('Set-Cookie').find(
+            str => str.indexOf(sessionManager.authCookie + "=" + req.session.id) !== -1));
       });
 
       it("anon and auth session are correctly linked", function() {
@@ -194,8 +196,8 @@ describe("Sessions", function() {
       });
 
       it("set-cookie present", function() {
-         const setCookie = res.getHeader('Set-Cookie');
-         assert(setCookie.indexOf(sessionManager.authCookie) !== -1);
+         assert(res.getHeader('Set-Cookie').find(
+            str => str.indexOf(sessionManager.authCookie) !== -1))
       });
 
       it("an anonymous session is now attached", function() {

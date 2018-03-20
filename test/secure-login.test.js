@@ -25,7 +25,7 @@ describe("Secure Login", function() {
    });
 
    describe("#start", function() {
-      let dbStartStub = sinon.stub(db, "start", cb => setTimeout(cb, 1000));
+      let dbStartStub = sinon.stub(db, "start").callsFake(cb => setTimeout(cb, 1000));
 
       beforeEach(function() {
          dbStartStub.reset();
@@ -44,7 +44,7 @@ describe("Secure Login", function() {
 
       it("changes to 'on' state after database has finished starting", function(done) {
          sl.start();
-         setTimeout(() => done(sl.stage === "on" ? null : new Error()), 1001);
+         setTimeout(() => done(sl.stage === "on" ? null : new Error()), 1500);
       });
 
       it("queues database to start", function() {
@@ -64,6 +64,10 @@ describe("Secure Login", function() {
          sessionManagerSpy = sinon.spy(sl.sessionManager, "run");
          apiRouterSpy = sinon.spy(sl.api, "router");
       });
+
+      afterEach(function() {
+         sl.sessionManager.run.restore();
+      })
 
       it("passes error if sl not on", function(done) {
          sl.run(null, null, err => done(err ? null : new Error()));
