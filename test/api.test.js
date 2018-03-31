@@ -3,6 +3,7 @@ const sinon = require("sinon");
 const assert = require("assert");
 const SecureLoginEndpoint = require("../endpoint.js");
 const SecureLoginApi = require("../api");
+const SecureLoginCredentials = require("../credentials");
 
 describe("API", function() {
    describe("#setProperty", function() {
@@ -184,7 +185,13 @@ describe("API", function() {
          });
 
          it("run is called with correct arguments", done => {
-            setTimeout(() => { assert(runSpy.calledWithExactly(require("querystring").parse(requestBody), req, resStub, nextSpy)); done(); }, 100);
+            setTimeout(() => {
+                spyArgs = runSpy.args[0]
+                assert(spyArgs[0] instanceof SecureLoginCredentials);
+                assert(spyArgs[1] == req);
+                assert(spyArgs[2] == resStub);
+                assert(spyArgs[3] == nextSpy);
+                done(); }, 100);
          });
 
          it("next is called after run", done => {
