@@ -1,6 +1,7 @@
 const SecureLoginEndpoint = require("./endpoint");
 const SecureLoginDatabase = require("./database");
 const SecureLoginSessionManager = require("./session");
+const SecureLoginCredentials = require("./credentials");
 const slCodes = require("./codes");
 const Receipt = require("./receipt");
 
@@ -94,7 +95,8 @@ class SecureLoginApi {
       let data = "";
       req.on("data", d => data += d)
          .on("end", () => {
-            this.endpoints[endpoint].run(require("querystring").parse(data), req, res, next);
+            const credentials = SecureLoginCredentials(require("querystring").parse(data))
+            this.endpoints[endpoint].run(credentials, req, res, next);
          });
    }
 }
