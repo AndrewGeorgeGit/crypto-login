@@ -95,7 +95,7 @@ class SecureLoginApi {
       let data = "";
       req.on("data", d => data += d)
          .on("end", () => {
-            const credentials = SecureLoginCredentials(require("querystring").parse(data))
+            const credentials = new SecureLoginCredentials(require("querystring").parse(data))
             this.endpoints[endpoint].run(credentials, req, res, next);
          });
    }
