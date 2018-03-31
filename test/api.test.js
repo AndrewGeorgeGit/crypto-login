@@ -139,9 +139,9 @@ describe("API", function() {
 
       afterEach(function() {
          req.on.restore();
-         runSpy.reset();
-         nextSpy.reset();
-         resStub.reset();
+         runSpy.resetHistory();
+         nextSpy.resetHistory();
+         resStub.resetHistory();
       })
 
       describe("case: api.settings.use is false", function() {
