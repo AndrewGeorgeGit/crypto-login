@@ -1,20 +1,20 @@
-const slCodes = require('./codes');
+const slCodes = require("./codes");
 
 class DatabaseReceipt {
-	constructor(username) {
-		this.username = username;
-		this.failReason = slCodes.NONE;
-	}
+  constructor(username) {
+    this.username = username;
+    this.failReason = slCodes.NONE;
+  }
 
-	setSuccess(success) {
-		this.success = success;
-		return this;
-	}
+  setSuccess(success) {
+    this.success = success;
+    return this;
+  }
 
-	setFailReason(failReason) {
-		this.failReason = failReason;
-		return this;
-	}
+  setFailReason(failReason) {
+    this.failReason = failReason;
+    return this;
+  }
 }
 
 module.exports = DatabaseReceipt;
